@@ -1,0 +1,67 @@
+{
+  "leaseId": "397987706b20bfa7a2493223352530749a6b0929363a794c71225a4bfb31e9b0",
+  "attemptId": "f29d8201-4065-4807-8dd2-8d95c0cfcc76",
+  "scenario": "s05-r2",
+  "errors": [
+    {
+      "timestamp": 1790764355446,
+      "source": {
+        "message": "D1_ERROR: UNIQUE constraint failed: test_review_scenarios.lease_id: SQLITE_CONSTRAINT (extended: SQLITE_CONSTRAINT_UNIQUE)",
+        "exception": {
+          "name": "Error",
+          "stack": "    at D1DatabaseSessionAlwaysPrimary._sendOrThrow (cloudflare-internal:d1-api:188:19)\n    at async cloudflare-internal:d1-api:137:19\n    at async SharedTestReviewScenarios.prepare (queue-consumer.js:50243:22)\n    at async SharedTestReviewScenarios.handle (queue-consumer.js:50311:32)\n    at async queue-consumer.js:145:16",
+          "timestamp": 1790764355446
+        }
+      },
+      "requestId": "c23fba9b57f86cf3345df7e5c52e2ed6"
+    },
+    {
+      "timestamp": 1790763970423,
+      "source": {
+        "message": "provider_test_operation_uncertain",
+        "exception": {
+          "name": "Error",
+          "stack": "    at ImplementationProviderTest.call (queue-consumer.js:46954:51)\n    at async SharedTestReviewScenarios.prepare (queue-consumer.js:50247:9)\n    at async SharedTestReviewScenarios.handle (queue-consumer.js:50311:32)\n    at async queue-consumer.js:145:16",
+          "timestamp": 1790763970423
+        }
+      },
+      "requestId": "6eb8e02029d418ce8d3d8c14bc7925c5"
+    },
+    {
+      "timestamp": 1790763941417,
+      "source": {
+        "message": "Linear isolated test HTTP 503: upstream connect error or disconnect/reset before headers. reset reason: connection termination",
+        "exception": {
+          "name": "ProviderResponseError",
+          "stack": "    at responseError (queue-consumer.js:121:75)\n    at async ImplementationProviderTest.graphql (queue-consumer.js:46762:34)\n    at async ImplementationProviderTest.call (queue-consumer.js:46996:25)\n    at async SharedTestReviewScenarios.prepare (queue-consumer.js:50247:9)\n    at async SharedTestReviewScenarios.handle (queue-consumer.js:50311:32)\n    at async queue-consumer.js:145:16",
+          "timestamp": 1790763941417
+        }
+      },
+      "requestId": "b88e0cf0245eb43d89191b2d12d0ef02"
+    },
+    {
+      "timestamp": 1790764007742,
+      "source": {
+        "message": "test_review_control_failed:500:error code: 1101\n",
+        "exception": {
+          "name": "Error",
+          "stack": "    at SharedTestReviewScenarios.control (queue-consumer.js:50227:34)\n    at async SharedTestReviewScenarios.handle (queue-consumer.js:50366:22)\n    at async queue-consumer.js:145:16",
+          "timestamp": 1790764007742
+        }
+      },
+      "requestId": "a8892459cd45fca1be0c6e163e0d9ada"
+    },
+    {
+      "timestamp": 1790764361427,
+      "source": {
+        "message": "D1_ERROR: UNIQUE constraint failed: test_review_scenarios.lease_id: SQLITE_CONSTRAINT (extended: SQLITE_CONSTRAINT_UNIQUE)",
+        "exception": {
+          "name": "Error",
+          "stack": "    at D1DatabaseSessionAlwaysPrimary._sendOrThrow (cloudflare-internal:d1-api:188:19)\n    at async cloudflare-internal:d1-api:137:19\n    at async SharedTestReviewScenarios.prepare (queue-consumer.js:50243:22)\n    at async SharedTestReviewScenarios.handle (queue-consumer.js:50311:32)\n    at async queue-consumer.js:145:16",
+          "timestamp": 1790764361427
+        }
+      },
+      "requestId": "d4e73d08cb722ef491a10f132c273e17"
+    }
+  ]
+}

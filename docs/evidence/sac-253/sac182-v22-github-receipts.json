@@ -1,0 +1,148 @@
+{
+  "sourceResponses": [
+    {
+      "kind": "reviews",
+      "sha256": "8b228b143bb1719043810ed8160301d36c48b03ea0132a5b9294935ea0422b5f"
+    },
+    {
+      "kind": "comments",
+      "sha256": "897916ccfb6aeac8eb4a6f2e210ece0bab55fbb8dc762763da49785d103b2700"
+    }
+  ],
+  "records": [
+    {
+      "kind": "reviews",
+      "id": 5364783086,
+      "actorId": 233623,
+      "state": "CHANGES_REQUESTED",
+      "commitId": "369f4a39ac204baff27b19360299b71cd03d6d2d",
+      "originalCommitId": null,
+      "replyTo": null,
+      "createdAt": "2026-09-30T10:10:19Z",
+      "markers": [
+        {
+          "kind": "review_bundle",
+          "reviewId": "01a0f1c7-6613-7e40-9fe2-5a8637c7554a",
+          "partId": "review_bundle",
+          "headSha": "369f4a39ac204baff27b19360299b71cd03d6d2d",
+          "event": "REQUEST_CHANGES"
+        }
+      ]
+    },
+    {
+      "kind": "reviews",
+      "id": 5364920018,
+      "actorId": 233623,
+      "state": "APPROVED",
+      "commitId": "369f4a39ac204baff27b19360299b71cd03d6d2d",
+      "originalCommitId": null,
+      "replyTo": null,
+      "createdAt": "2026-09-30T10:23:05Z",
+      "markers": [
+        {
+          "kind": "review_bundle",
+          "reviewId": "01a0f1d4-2602-767d-bfea-f2aa3820971d",
+          "partId": "review_bundle",
+          "headSha": "369f4a39ac204baff27b19360299b71cd03d6d2d",
+          "event": "APPROVE"
+        }
+      ]
+    },
+    {
+      "kind": "comments",
+      "id": 4143430591,
+      "actorId": 233623,
+      "state": null,
+      "commitId": "369f4a39ac204baff27b19360299b71cd03d6d2d",
+      "originalCommitId": "369f4a39ac204baff27b19360299b71cd03d6d2d",
+      "replyTo": 4143389828,
+      "createdAt": "2026-09-30T10:10:12Z",
+      "markers": [
+        {
+          "kind": "reply",
+          "clientSubmissionId": "01a0f1c9-6cbf-751a-9e0e-b219d6ed91c0",
+          "reviewId": "01a0f1c7-6613-7e40-9fe2-5a8637c7554a",
+          "partId": "reply:01a0f1c9-6cbf-751a-9e0e-b219d6ed91c0",
+          "headSha": "369f4a39ac204baff27b19360299b71cd03d6d2d",
+          "path": "canary-review.md"
+        }
+      ]
+    },
+    {
+      "kind": "comments",
+      "id": 4143431600,
+      "actorId": 233623,
+      "state": null,
+      "commitId": "369f4a39ac204baff27b19360299b71cd03d6d2d",
+      "originalCommitId": "369f4a39ac204baff27b19360299b71cd03d6d2d",
+      "replyTo": null,
+      "createdAt": "2026-09-30T10:10:19Z",
+      "markers": [
+        {
+          "kind": "text-selection",
+          "clientSubmissionId": "01a0f1c9-219d-73ab-b2c5-d4ab8cda1660",
+          "repository": "sachinkundu/deos-sample-project",
+          "pullRequest": 81,
+          "headSha": "369f4a39ac204baff27b19360299b71cd03d6d2d",
+          "path": "canary-review.md",
+          "sourceFingerprint": "8ad4f0740c1ebfb0c56c00d4edfc6ee3c66bc2f688aff58049cdcd0bd50f9059",
+          "startLine": 2,
+          "endLine": 2,
+          "reviewId": "01a0f1c7-6613-7e40-9fe2-5a8637c7554a",
+          "contentItemId": "01a0f1c9-219d-73ab-b2c5-d4ab8cda1660"
+        }
+      ]
+    },
+    {
+      "kind": "comments",
+      "id": 4143538778,
+      "actorId": 233623,
+      "state": null,
+      "commitId": "369f4a39ac204baff27b19360299b71cd03d6d2d",
+      "originalCommitId": "369f4a39ac204baff27b19360299b71cd03d6d2d",
+      "replyTo": null,
+      "createdAt": "2026-09-30T10:23:05Z",
+      "markers": [
+        {
+          "kind": "text-selection",
+          "clientSubmissionId": "01a0f1d5-6831-7537-8472-f52335fbed90",
+          "repository": "sachinkundu/deos-sample-project",
+          "pullRequest": 81,
+          "headSha": "369f4a39ac204baff27b19360299b71cd03d6d2d",
+          "path": "canary-review.md",
+          "sourceFingerprint": "8ad4f0740c1ebfb0c56c00d4edfc6ee3c66bc2f688aff58049cdcd0bd50f9059",
+          "startLine": 2,
+          "endLine": 2,
+          "reviewId": "01a0f1d4-2602-767d-bfea-f2aa3820971d",
+          "contentItemId": "01a0f1d5-6831-7537-8472-f52335fbed90"
+        }
+      ]
+    },
+    {
+      "kind": "comments",
+      "id": 4143538782,
+      "actorId": 233623,
+      "state": null,
+      "commitId": "369f4a39ac204baff27b19360299b71cd03d6d2d",
+      "originalCommitId": "369f4a39ac204baff27b19360299b71cd03d6d2d",
+      "replyTo": null,
+      "createdAt": "2026-09-30T10:23:05Z",
+      "markers": [
+        {
+          "kind": "text-selection",
+          "clientSubmissionId": "01a0f1d5-c9eb-798a-aad5-3e96ebb8a585",
+          "repository": "sachinkundu/deos-sample-project",
+          "pullRequest": 81,
+          "headSha": "369f4a39ac204baff27b19360299b71cd03d6d2d",
+          "path": "canary-review.md",
+          "sourceFingerprint": "8ad4f0740c1ebfb0c56c00d4edfc6ee3c66bc2f688aff58049cdcd0bd50f9059",
+          "startLine": 2,
+          "endLine": 2,
+          "reviewId": "01a0f1d4-2602-767d-bfea-f2aa3820971d",
+          "contentItemId": "01a0f1d5-c9eb-798a-aad5-3e96ebb8a585"
+        }
+      ]
+    }
+  ],
+  "duplicateReviewOrReplyMarkers": []
+}
