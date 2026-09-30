@@ -1013,3 +1013,85 @@ The close path saved and read back all 131 database tables, six runner artifacts
 - Absence: `84b6bf347fd50be49413aca5d9b8698b1db64a53b0b6e5fc96400baefdab66e0`.
 
 ![Site free after V17 cleanup](sac-182-v17-site-free.jpeg)
+
+## V18 provider results and error repair
+
+Candidate `663af2bc06baedab0bcd154b59a384c596543d69` ran from 03:21 to
+04:10 UTC on 30 September. The result remains blocked. Nine scenarios were
+demonstrated. The two different-person checks remain unproven, and the s06
+replacement reached GitHub but did not complete its Linear step.
+
+The checked account was connected and rotated from policy 1 to 2. The frozen
+run kept policy 1. An injected Settings identity mismatch was rejected. These
+facts do not prove a reconnect with a different person.
+
+The app completed request changes, both approval forms, reply adoption after a
+lost response, a retry of only the Linear step, stale-head recovery, and a
+replacement that kept its prior reply receipt. The guard scenario rejected
+forged page identity fields before creating an intent. It also retained both
+digests for an altered payload with the same review ID. Two unauthorized Linear
+moves were restored with separate signed return events. A later checked review
+then made one workflow transition. Each of the nine completed intents has one
+transition. The uncertain-reply and held-delivery cases retain operator items
+and no transition.
+
+The s06 failure began with a real HTTP 503 from the trusted Linear scope read.
+Request `185f86d0-76f0-43a1-8922-a9f2d429ccf5` retained the original upstream
+connection error and stack. The mutation was never sent. The candidate did not
+catch the thrown fetch error, so its Linear attempt stayed unfinished. Preparing
+the next scenario then retired that run. Review
+`01a0f066-046e-7cb5-a9f5-1b222a88e2dd` still records that unfinished attempt;
+cleanup does not rewrite it as success.
+
+The coordinator now rejects scenario retirement while a review or restoration
+is pending. A known scope-read HTTP failure returns a failed response before
+any provider write. The candidate records thrown connection errors as uncertain,
+closes the attempt, saves the original causes, and creates an operator item.
+It forbids an automatic repeat of an uncertain move. The CI job also installs
+the BettaView dependencies before running tests that import them.
+
+Cleanup uses a narrow read-only check for the old unfinished attempt. It requires
+the original request digest, one failed scope read, no overlapping write, no
+provider response, no signed target-state event, and no gate decision. Missing
+or ambiguous evidence still blocks cleanup. A live read-only check passed for
+all 15 GitHub receipts before the fix was deployed. The full coordinator suite
+passed 958 tests with four optional skips. The candidate passed 674 tests with
+one optional skip, and BettaView passed 132 with one optional skip. Both root
+type checks passed.
+
+The immutable runner artifacts are:
+
+- Result: `c7977c882afe21b7daf532dd641378e91dbc7c7ddd9fe75a1ae807021410cf49`.
+- Commands: `ce95dde97295c53fc4a1eaf40d7966085707baf0541192b33df366ead3151e4c`.
+- Validation: `dc5b3394544cd86b4029d1dd69e7f2da02e79112c88914cce038b657843fae13`.
+- Transcript: `e24b5cbd1e2ee1862efd5ac3cfa1646be6b861b4b400cc3d7ade3f66018dc883`.
+
+Selected safe images passed public hash readback:
+[first account link](https://deos-shared-test-proof.skundu.workers.dev/proof/2764c354-a8bb-4898-b557-63c28e8b7d02),
+[rotated account link](https://deos-shared-test-proof.skundu.workers.dev/proof/2f590f16-822d-432c-aafb-6f700b986760),
+[completed request changes](https://deos-shared-test-proof.skundu.workers.dev/proof/3ecaf5c5-46be-426a-a660-f1e995f64dba),
+and [the real SAC-182 task](https://deos-shared-test-proof.skundu.workers.dev/proof/5e73843c-213d-4e2e-866b-2bd0b4f05467).
+The [safe command proof](https://deos-shared-test-proof.skundu.workers.dev/proof/b6de3bab-3c85-4751-90dd-d74aa1e10207)
+also passed readback. Raw captures remain private. The runner's report treated
+every private capture as a blocker; that is not a requirement. Its original
+report is retained, and the guide now states the selected-image rule clearly.
+
+### V18 cleanup readback
+
+At 04:33:06 UTC, the site returned to Free at fence 36 and revision 3381.
+All seven owned resources read back absent. Before removal, cleanup retained
+all 131 database tables, six runner artifacts, 51 captures and proof objects,
+and 22 store snapshots. All 15 scenario workflows were stopped. Hash readback
+passed for every retained snapshot. The close record is `blocked_demo` and
+grants no test or release approval.
+
+- Failure evidence: `fa604f4cc21de7407d2bf49434c4ceecd5a8b5930d88fdc5bae577ea843c4f5b`.
+- Workflow settlement: `637c073923e368022cd9ccb8569b7a47a2ccd299bc8e7977cc2d275c937dfb85`.
+- Cleanup: `2476cb1009bf10dbc04aac87cf4f408ff9bd6db5cca83613ecfacb28ae8b158e`.
+- Absence: `80a95de6f56848e822ee6d0897ca0acc448a33209a17b0aebaefe1830989bcdd`.
+
+![Site free after V18 cleanup](sac-182-v18-site-free.jpeg)
+
+The corrected candidate is `b2596f7e211f20a289e362971e489857f99cd0ea`. Its
+bundles were built from a clean checkout, uploaded, and hash-checked. The prior
+results do not grant this new commit a pass. It requires fresh lease proof.
