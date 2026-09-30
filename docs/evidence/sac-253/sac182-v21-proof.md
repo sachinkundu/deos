@@ -49,6 +49,22 @@ Counts alone do not prove the replay, replacement, draft persistence, identity,
 or visual subcases. Missing checks remain missing until their actual evidence
 has been inspected.
 
+## Saved command and receipt evidence
+
+The [Showboat readback](sac182-v21-showboat.md) records live GitHub reads and
+preserves the original CLI error before the corrected command. The
+[GitHub receipt projection](sac182-v21-github-receipts.json) keeps provider IDs,
+actors, head commits, decoded app markers, and source-response hashes.
+
+The [saved D1 and provider facts](sac182-v21-receipt-facts.json) join six
+continued reviews to six signed Linear deliveries and gate transitions. The
+[partial consistency check](sac182-v21-observed-chain.json) also joined 12
+accepted parts to 12 unique provider records. The uncertain s07-b reply is a
+thirteenth real GitHub record; its app receipt remained unresolved. No duplicate
+review or reply marker was found. This partial audit does not satisfy the full
+scenario verifier or fill any missing subcase. The full verifier rejected this
+dataset with `ValueError: missing completed publication scenario`.
+
 ## Public visual evidence
 
 These are fixed, sanitized crops of real deployed app captures:

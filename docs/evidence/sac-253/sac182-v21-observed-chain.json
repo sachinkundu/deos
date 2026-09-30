@@ -1,0 +1,16 @@
+{
+  "scope": "V21 observed receipt consistency only; not a full demo",
+  "missingCompletedPublicationScenarios": [
+    "s04",
+    "s10",
+    "s11",
+    "s12"
+  ],
+  "fullDemoPassed": false,
+  "continuedReviews": 6,
+  "signedTransitionsVerified": 6,
+  "acceptedPartsVerified": 12,
+  "uniqueProviderReceipts": 12,
+  "unfinishedAttempts": 0,
+  "duplicateReviewOrReplyMarkers": []
+}
