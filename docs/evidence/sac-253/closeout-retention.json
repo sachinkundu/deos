@@ -1,0 +1,33 @@
+{
+  "leaseId": "cab6f898b4378c58dda63ee3fedbe8c598e595bb9d339b3a9932fe2232f1f7a5",
+  "failureEvidenceSha256": "6009d990c98b6664e336dc20ad579ce3514c6b8d3b3e6ad80d687128c7f20f28",
+  "artifactCount": 8,
+  "captureCount": 6,
+  "snapshotCount": 2,
+  "runtimeFailure": {
+    "state": "failed",
+    "summary": {
+      "version": 1,
+      "attemptId": "df0c12f0-b9a6-4f48-95c3-44e8557a61d6",
+      "safeErrorCategory": "codex_terminated",
+      "storedFiles": [
+        "original-errors.jsonl",
+        "patch.diff",
+        "provider-references.json",
+        "showboat.md",
+        "status.json",
+        "transcript.jsonl",
+        "validation.txt"
+      ],
+      "absentFiles": [
+        "result.json"
+      ],
+      "policyRejectedFiles": []
+    }
+  },
+  "retainedBytesVerified": true,
+  "tableCount": 131,
+  "appCounts": {
+    "review_intents": 0
+  }
+}

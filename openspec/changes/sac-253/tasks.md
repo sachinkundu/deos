@@ -1,3 +1,18 @@
+## Owner closeout — 30 September 2026
+
+The owner accepted the normal path and asked to wrap up the Cloudflare implementation,
+the shared test lease, and SAC-182. Stop further exception testing at this checkpoint.
+The V22 candidate proved Request Changes and Approve through BettaView, GitHub,
+signed Linear events, and one workflow transition per review. Keep the failed and
+partial test records as recorded; this decision does not turn them into passed tests.
+
+The two checks with a second real user, the rest of the live fault and recovery
+matrix, full test attestation, release-guard enforcement, and SAC-182 production
+rollout are deferred. The guard stays in observe-only mode. Unchecked tasks below
+retain these evidence gaps; they do not request more test work in this closeout.
+
+See [the closeout record](../../../docs/evidence/sac-253/closeout.md).
+
 ## 1. Provider contracts and deterministic boundaries
 
 - [x] 1.1 Verify Linear's Issue update and webhook contracts with a short-lived DEOS issue, including event-time fields, actor, timestamp unit, description changes, and exact marker removal after a human edit.

@@ -24,8 +24,8 @@ After this run, all seven owned test resources were removed and checked absent. 
 
 [Detailed evidence and limitations](sac182-v22-proof.md) · [Provider readbacks](sac182-v22-showboat.md) · [Saved workflow facts](sac182-v22-receipt-facts.json)
 
-## Stopped here for owner review
+## Owner accepted this scope
 
-The owner asked to see the normal path before more exception work. The second Linear-user and GitHub-account checks are deferred. Replay, recovery, fault, and negative cases are outside this checkpoint. This is normal-path proof; the full regression suite and release approval remain incomplete.
+On 30 September 2026, the owner accepted the normal path and asked to wrap up. The second Linear-user and GitHub-account checks are deferred. Replay, recovery, fault, and negative cases are outside this checkpoint. The full regression suite and live release remain separate work.
 
-The later V23 test author was paused at 11:11:11 UTC, before any review publication in that attempt. Its files and isolated environment are preserved. The supervisor and lease remain active, so the status page may still say active; the author process group is stopped. No further edge-case work or restart is authorized before the owner reviews this result.
+The later V23 test author was paused at 11:11:11 UTC, before any review publication in that attempt. Closeout retained its original failure, files, and store snapshots, then stopped the supervisor and closed the lease. All seven resources are absent. The site returned to Free at 16:09:08 UTC. See the [final closeout record](closeout.md).
