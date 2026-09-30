@@ -70,6 +70,18 @@ try {
   await reviews.prepare({reviewId,runId:second.runId,issueId:'issue',repository:'owner/fixture',pullRequestNumber:9,
     headSha:pull.head.sha,gateVisitSequence:1,reviewType:'APPROVE',accountPolicyVersion:1,items:[]},
     'e'.repeat(64),{stateId:'merge',stateName:'Merging',edge:'trusted_merge'},stamp);
+  await assert.rejects(reviews.prepare({reviewId,runId:second.runId,issueId:'issue',repository:'owner/fixture',pullRequestNumber:9,
+    headSha:pull.head.sha,gateVisitSequence:1,reviewType:'COMMENT',accountPolicyVersion:1,items:[]},
+    'f'.repeat(64),{stateId:'work',stateName:'In Progress',edge:'edit'},stamp),/id_clash/);
+  const clashEvidence=await (await request('evidence',{scenario:'s03'})).json();
+  assert.equal(clashEvidence.idClashes.length,1);
+  assert.deepEqual(Object.keys(clashEvidence.idClashes[0]).sort(),
+    ['fault_id','public_code','receivedDigest','review_id','savedDigest']);
+  assert.equal(clashEvidence.idClashes[0].savedDigest,'e'.repeat(64));
+  assert.equal(clashEvidence.idClashes[0].receivedDigest,'f'.repeat(64));
+  assert.equal(clashEvidence.intents[0].review_type,'APPROVE');
+  assert.equal(clashEvidence.intents[0].bound_digest,'e'.repeat(64));
+  assert.deepEqual((await (await request('evidence',{scenario:'s02'})).json()).idClashes,[]);
   sql.prepare("UPDATE review_intents SET github_status='done',linear_status='awaiting_delivery',linear_operation_id='test-operation',linear_delivery_deadline=? WHERE review_id=?").run(stamp,reviewId);
   await request('delivery',{scenario:'s03',event:{deliveryId:'matching-test-delivery',issueId:'issue',payloadDigest:'f'.repeat(64),actorId:'app',actorType:'application',providerTime:stamp,receivedAt:new Date().toISOString(),fromStateId:'review',toStateId:'merge'}});
   await reviews.expireLinearDelivery(reviewId,new Date().toISOString());

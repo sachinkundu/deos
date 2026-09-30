@@ -28,6 +28,7 @@ async function evidence(env,runId) {
     intents:await rows(db,'SELECT * FROM review_intents WHERE run_id=?',runId),
     parts:await rows(db,'SELECT p.* FROM review_parts p JOIN review_intents r ON r.review_id=p.review_id WHERE r.run_id=?',runId),
     attempts:await rows(db,'SELECT a.* FROM review_attempts a JOIN review_intents r ON r.review_id=a.review_id WHERE r.run_id=?',runId),
+    idClashes:await rows(db,"SELECT f.fault_id,f.review_id,f.public_code,json_extract(f.safe_act_facts_json,'$.savedDigest') AS savedDigest,json_extract(f.safe_act_facts_json,'$.receivedDigest') AS receivedDigest FROM review_faults f JOIN review_intents r ON r.review_id=f.review_id WHERE r.run_id=? AND f.public_code='id_clash' ORDER BY f.created_at,f.fault_id",runId),
     leases:await rows(db,'SELECT a.* FROM review_continuation_leases a JOIN review_intents r ON r.review_id=a.review_id WHERE r.run_id=?',runId),
     inbox:await rows(db,'SELECT * FROM workflow_event_inbox WHERE run_id=?',runId),
     transitions:await rows(db,'SELECT * FROM workflow_transitions_v2 WHERE run_id=?',runId),

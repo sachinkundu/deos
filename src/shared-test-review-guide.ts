@@ -11,7 +11,7 @@ export const sharedTestReviewGuide = {
   operations:{
     bootstrap:'Read the checked Settings project and reviewer inputs.',
     prepare:'Use a unique scenario from s01 through s12, optionally with a short suffix. A retired ID cannot be reused; choose a fresh suffix such as s11-final. Finish all checks and readbacks before preparing the next scenario. Retain prior facts and allocate the real candidate workflow before opening a fresh browser context.',
-    evidence:'Read actual candidate database facts, signed provider deliveries, labeled injections for the named scenario, and current lease proof publication status. A capture starts private and pending; check proof again before reporting its publication blocked. Only public_safe items with sanitizerResult passed and a publicUrl have been published.',
+    evidence:'Read actual candidate database facts, signed provider deliveries, labeled injections for the named scenario, and current lease proof publication status. idClashes reports the saved and received digests for rejected reused IDs in that scenario. A capture starts private and pending; check proof again before reporting its publication blocked. Only public_safe items with sanitizerResult passed and a publicUrl have been published.',
     'github.read':'Read the fixed fixture PR. Optional path is empty, /reviews, /comments, or /files.',
     'linear.read':'Read the fixed disposable Linear issue.',
     seed_thread:'Create one labeled initial thread on canary-review.md for the named scenario. This setup is not app publication proof.',

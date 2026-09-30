@@ -969,3 +969,17 @@ The real review paths, retries, reply adoption, replacement lineage, and signed 
 Cleanup stopped safely on `test_unpublished_review_effects_present`. A delayed s08 delivery had also caused a restoration; cleanup had assumed all such operations belonged to s12. The fix checks every known scenario against its exact fixture, source delivery, return delivery, actor, target, and digest. A return event may arrive after a scenario retires. Its signed root receipt can prove the cleanup effect without claiming that the candidate consumed it. Both pending and completed operation forms have positive and negative tests. No database has been deleted and no pass or release approval is granted by this repair.
 
 The verified public review image is [request changes](https://deos-shared-test-proof.skundu.workers.dev/proof/bededbb0-ffb1-4e49-bd7d-b68f0eac7118). The [approval image](https://deos-shared-test-proof.skundu.workers.dev/proof/8a6bd509-75a9-4431-b651-cbcd7d5eb398) shows the GitHub and Linear results. The first approval projection was rejected by OCR; a smaller crop passed. Original captures and the rejection remain private.
+
+
+### V15 cleanup readback
+
+At 00:36:05 UTC on 30 September, all seven owned resources had passed removal and absence checks. The site returned to Free at revision 3020. Before deletion, the retained snapshot included all 131 database tables, 16 stopped workflows, 6 runner artifacts, 44 captures, and 16 store snapshots. Readback verified their hashes. The result remains `blocked_demo`.
+
+- Failure evidence: `ecd24e4fe3d520d00cf46617cc2ea4ace08d055997ec9f91abd97f91250a5f90`.
+- Workflow settlement: `8251f64d24eb4d729368fd1199bf98493e36fa4b8372645d72a9346c0fb127dd`.
+- Cleanup: `3a64fd60f094790fcd4410a772ad5420245997a2898410838dc7ca8e6e9d0cc8`.
+- Absence: `8bbe92726778effa18a230cd4774f34ca4b43bc6aa8ef8cad1c3bc18572b6181`.
+
+![Site free after V15 cleanup](sac-182-v15-site-free.jpeg)
+
+Candidate `b73b8dae6c05054f5bd9c707b592ccbb3a9593c5` includes the restoration receipt fix, both id-clash fingerprints, and durable pre-intent authentication diagnostics. Local root tests: 666 passed, one optional skip. Signature, expiry, nonce replay, and checked GitHub identity mismatch tests run through the actual RPC method and verify that no review or provider operation is created. A fresh provider run is still required.
