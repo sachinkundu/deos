@@ -8,6 +8,7 @@ import {sha256Hex} from './implementation-hash.ts';
 import {snapshotBlockedSetup} from './shared-test-setup-snapshot.ts';
 import {settleUnpublishedReview} from './shared-test-unpublished-settlement.ts';
 import {CloudflareTestBrowserProvider} from './shared-test-browser-provider.ts';
+import {sharedTestResultHasBlocker} from './shared-test-result.ts';
 
 interface Subject {
   run_id:string;lease_id:string;attempt_id:string;candidate_commit:string;
@@ -68,7 +69,7 @@ export async function closeBlockedSharedTestDemo(request:Request,env:Env,
     JOIN test_lease_closures c ON c.lease_id=l.lease_id AND c.run_id=l.run_id
     WHERE l.run_id=? AND l.lease_id=? AND l.fence=? AND l.candidate_commit=? AND l.attempt_id=?
       AND l.state='closed' AND l.activated_at IS NOT NULL AND a.node_id='shared_test_demo'
-      AND a.state='blocked' AND a.cleanup_state='destroyed' AND a.ended_at IS NOT NULL
+      AND a.state IN ('blocked','completed') AND a.cleanup_state='destroyed' AND a.ended_at IS NOT NULL
       AND EXISTS (SELECT 1 FROM artifact_manifests m WHERE m.manifest_id=a.manifest_id AND m.state='complete')
       AND NOT EXISTS (SELECT 1 FROM agent_attempts x WHERE x.run_id=l.run_id
         AND x.state IN ('pending','starting','running','collecting'))
@@ -94,7 +95,9 @@ export async function closeBlockedSharedTestDemo(request:Request,env:Env,
     if(artifact===startupSummary)startupText=new TextDecoder().decode(bytes);
   }
   const outcome=startup ? null : JSON.parse(resultText) as {outcome:string;summary:string;blocker:string};
-  if(!startup && (outcome?.outcome!=='blocked' || !outcome.blocker))
+  if(!startup && (!outcome || !sharedTestResultHasBlocker(outcome) ||
+      !(outcome.outcome==='completed' ||
+        (outcome.outcome==='blocked' && subject.attempt_state==='blocked'))))
     throw new Error('test_blocked_demo_original_result_not_blocked');
   if(startup) {
     const summary=JSON.parse(startupText) as {attemptId:string;safeErrorCategory:string};
@@ -199,7 +202,8 @@ export async function closeBlockedSharedTestDemo(request:Request,env:Env,
   if(invalidClosure) {
     await recordInvalidSharedTestClosure(env.DB,{runId:subject.run_id,leaseId:subject.lease_id,
       attemptId:subject.attempt_id,candidateCommit:subject.candidate_commit,faultId,
-      evidenceKey:key,evidenceSha256:digest,sectionSha256:await sha256Hex(section),now,retained:invalidClosure});
+      evidenceKey:key,evidenceSha256:digest,sectionSha256:await sha256Hex(section),now,retained:invalidClosure,
+      invalidationReason:subject.attempt_state==='completed'?'completed_with_blocker':'blocked_attempt'});
     return Response.json({state:'closed',invalidated:true,leaseId:subject.lease_id,failureEvidenceSha256:digest});
   }
   const inserted=await env.DB.prepare(`INSERT INTO test_lease_aborts

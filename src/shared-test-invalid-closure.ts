@@ -44,6 +44,7 @@ export async function readInvalidSharedTestClosure(env:Pick<Env,'DB'|'ARTIFACTS'
 export async function recordInvalidSharedTestClosure(db:D1Database,input:{
   runId:string;leaseId:string;attemptId:string;candidateCommit:string;faultId:string;
   evidenceKey:string;evidenceSha256:string;sectionSha256:string;now:string;
+  invalidationReason:'blocked_attempt'|'completed_with_blocker';
   retained:Awaited<ReturnType<typeof readInvalidSharedTestClosure>>;
 }):Promise<void> {
   const {closure}=input.retained;
@@ -53,10 +54,10 @@ export async function recordInvalidSharedTestClosure(db:D1Database,input:{
   const results=await db.batch([
     db.prepare(`INSERT INTO test_invalid_closures
       (lease_id,run_id,attempt_id,candidate_commit,failure_evidence_key,failure_evidence_sha256,
-        original_receipt_sha256,cleanup_sha256,absence_sha256,snapshot_state,recorded_at)
-      VALUES (?,?,?,?,?,?,?,?,?,'lost_before_capture',?)`)
+        original_receipt_sha256,cleanup_sha256,absence_sha256,snapshot_state,recorded_at,invalidation_reason)
+      VALUES (?,?,?,?,?,?,?,?,?,'lost_before_capture',?,?)`)
       .bind(input.leaseId,input.runId,input.attemptId,input.candidateCommit,input.evidenceKey,
-        input.evidenceSha256,input.retained.originalReceiptSha256,closure.cleanup_sha256,closure.absence_sha256,input.now),
+        input.evidenceSha256,input.retained.originalReceiptSha256,closure.cleanup_sha256,closure.absence_sha256,input.now,input.invalidationReason),
     db.prepare(`INSERT INTO test_lease_aborts
       (lease_id,run_id,first_fault_id,proof_body_sha256,proof_read_at,abort_kind,attempt_id,
         failure_evidence_key,failure_evidence_sha256,cleanup_sha256,absence_sha256,closed_at,receipt_json)

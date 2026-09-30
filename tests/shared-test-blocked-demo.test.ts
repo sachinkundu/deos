@@ -11,8 +11,9 @@ import {sha256Hex} from '../src/implementation-hash.ts';
 import {retryBlockedSharedTestSetup,sharedTestSetupRepairRevision,sharedTestSetupRetryAllowsRequest} from '../src/shared-test-setup-retry.ts';
 import type {implementationGitHub} from '../src/implementation-github.ts';
 
-for(const variant of ['blocked','startup','invalid-closure']) test(`${variant} retains original proof and closes without approval`,async()=>{
-  const startup=variant==='startup',invalidClosed=variant==='invalid-closure';
+for(const variant of ['blocked','startup','invalid-closure','contradictory-closure','contradictory-blocked']) test(`${variant} retains original proof and closes without approval`,async()=>{
+  const startup=variant==='startup',invalidClosed=variant.endsWith('closure');
+  const contradictory=variant.startsWith('contradictory');
   const db=new ImplementationTestDatabase(),bucket=new ImplementationTestBucket();
   const leaseId='a'.repeat(64),oldHead='b'.repeat(40),newHead='c'.repeat(40),base='d'.repeat(40);
   const oldTree='e'.repeat(40),newTree='f'.repeat(40),secret='test-operator-secret';
@@ -24,6 +25,7 @@ for(const variant of ['blocked','startup','invalid-closure']) test(`${variant} r
     VALUES ('manifest','run-1','attempt-1','manifest.json','complete','now')`).run();
   db.sqlite.prepare(`UPDATE agent_attempts SET node_id='shared_test_demo',state='blocked',
     cleanup_state='destroyed',manifest_id='manifest',ended_at='now'`).run();
+  if(variant==='contradictory-closure')db.sqlite.exec("UPDATE agent_attempts SET state='completed'");
   if(startup) {
     db.sqlite.prepare(`UPDATE agent_attempts SET state='failed',result_class='startup_failed',
       process_id=NULL,started_at='a',ended_at='z'`).run();
@@ -33,7 +35,7 @@ for(const variant of ['blocked','startup','invalid-closure']) test(`${variant} r
     await bucket.put('original-error',JSON.stringify({message:'original checkout failure',cause:{status:502}}));
   }
   const originalArtifacts=startup ? [['failure-summary.json',JSON.stringify({version:1,attemptId:'attempt-1',safeErrorCategory:'startup_failed'})]]:
-    [['result.json',JSON.stringify({outcome:'blocked',blocker:'original missing client ID'})],
+    [['result.json',JSON.stringify({outcome:contradictory?'completed':'blocked',blocker:'original missing client ID'})],
     ['transcript.jsonl','{"original":"provider failure"}\n']];
   for(const [name,content] of originalArtifacts) {
     await bucket.put(name,content);
@@ -101,9 +103,27 @@ for(const variant of ['blocked','startup','invalid-closure']) test(`${variant} r
     assert.equal(writes,0);
     bucket.objects.set(changedName,new TextEncoder().encode(originalContent));
     if(invalidClosed) {
-      db.sqlite.exec("UPDATE agent_attempts SET state='completed'");
-      await assert.rejects(closeBlockedSharedTestDemo(request('close',input),env,githubForRun),/subject_not_ready/);
-      db.sqlite.exec("UPDATE agent_attempts SET state='blocked'");
+      if(!contradictory) {
+        db.sqlite.exec("UPDATE agent_attempts SET state='completed'");
+        await assert.rejects(closeBlockedSharedTestDemo(request('close',input),env,githubForRun),/original_result_not_blocked/);
+        db.sqlite.exec("UPDATE agent_attempts SET state='blocked'");
+      } else {
+        // A genuine success cannot be invalidated through this recovery path,
+        // even when its saved artifact is authentic and the exact subject matches.
+        for(const blocker of ['', '   ']) {
+          const successful=JSON.stringify({outcome:'completed',blocker});
+          bucket.objects.set('result.json',new TextEncoder().encode(successful));
+          db.sqlite.prepare("UPDATE artifacts SET byte_size=?,sha256=? WHERE logical_name='result.json'")
+            .run(Buffer.byteLength(successful),await sha256Hex(successful));
+          await assert.rejects(closeBlockedSharedTestDemo(request('close',input),env,githubForRun),/original_result_not_blocked/);
+          assert.equal(writes,0);
+          assert.equal(db.sqlite.prepare('SELECT COUNT(*) n FROM test_lease_aborts').get()?.n,0);
+        }
+        const original=originalArtifacts[0][1];
+        bucket.objects.set('result.json',new TextEncoder().encode(original));
+        db.sqlite.prepare("UPDATE artifacts SET byte_size=?,sha256=? WHERE logical_name='result.json'")
+          .run(Buffer.byteLength(original),await sha256Hex(original));
+      }
       db.sqlite.prepare("UPDATE test_lease_closures SET absence_sha256='wrong'").run();
       await assert.rejects(closeBlockedSharedTestDemo(request('close',input),env,githubForRun),/absence_changed/);
       db.sqlite.prepare('UPDATE test_lease_closures SET absence_sha256=?').run(await sha256Hex('[]'));
@@ -123,6 +143,11 @@ for(const variant of ['blocked','startup','invalid-closure']) test(`${variant} r
     } else assert.equal(evidence.startupFailure,null);
     await closeBlockedSharedTestDemo(request('close',input),env,githubForRun);assert.equal(writes,1);
     if(invalidClosed) {
+      assert.equal(db.sqlite.prepare('SELECT state FROM agent_attempts').get()?.state,contradictory?'completed':'blocked');
+      assert.equal(evidence.result.outcome,contradictory?'completed':'blocked');
+      assert.equal(await (await bucket.get('result.json'))!.text(),originalArtifacts[0][1]);
+      assert.equal(db.sqlite.prepare('SELECT invalidation_reason FROM test_invalid_closures').get()?.invalidation_reason,
+        contradictory?'completed_with_blocker':'blocked_attempt');
       assert.equal(evidence.setupSnapshot,null);
       assert.equal(evidence.unpublishedSettlement,null);
       assert.equal(evidence.invalidClosure.snapshotState,'lost_before_capture');

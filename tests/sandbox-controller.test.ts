@@ -592,13 +592,14 @@ class Collector {
   failureErrorCategory = "supervisor_failed";
   sandbox: Sandbox | null = null;
   receiptIds = ["operation-1"];
+  blocker = "";
   collect(): Promise<ArtifactCollectionResult> {
     return Promise.resolve({
       manifestId: "manifest:attempt-1",
       aggregateDigest: "aggregate",
       objectCount: 2,
       totalBytes: 100,
-      result: { outcome: "completed", providerReceipts: [...this.receiptIds] },
+      result: { outcome: "completed", blocker: this.blocker, providerReceipts: [...this.receiptIds] },
       providerReceipts: this.receiptIds.map((operationId) => ({
         capability: "github",
         operationId,
@@ -1671,6 +1672,30 @@ test("successful completion refreshes auth, removes it, collects, destroys, then
   assert.equal(attempts.latest?.manifest_id, "manifest:attempt-1");
   assert.equal(observation.state === "completed" ? observation.outcome.providerReceiptsComplete : false, true);
 });
+
+for (const blocker of ["Missing second-account setup", "", "   "]) test(
+  `shared-test collection classifies an explicit blocker without rewriting evidence: ${JSON.stringify(blocker)}`,
+  async () => {
+    const {controller,factory,attempts,collector}=setup({checkoutCommit:'a'.repeat(40)});
+    const shared={...definition,jobs:{...definition.jobs,
+      work:{...definition.jobs.work,inputs:['shared_test_context']}}};
+    collector.blocker=blocker;
+    await controller.execute(run,'work','work',shared);
+    factory.sandbox.supervisor.state='exited';
+    factory.sandbox.supervisor.exitCode=0;
+    const observation=await controller.execute(run,'work','work',shared);
+    const expected=blocker.trim()?'blocked':'completed';
+    assert.equal(observation.state,'completed');
+    assert.equal(observation.state==='completed'?observation.outcome.outcome:null,expected);
+    assert.equal(attempts.latest?.state,expected);
+    assert.equal(attempts.latest?.result_class,expected);
+    assert.equal(attempts.latest?.manifest_id,'manifest:attempt-1');
+    assert.equal(collector.verifiedDurable,1);
+    assert.equal(collector.verified,1);
+    assert.equal((await collector.collect()).result.outcome,'completed','original report remains unchanged');
+    assert.equal((await collector.collect()).result.blocker,blocker);
+    if(blocker.trim())assert.match(attempts.latest?.result_detail??'',/unresolved blocker/);
+  });
 
 test("successful agent output without durable provider receipts fails closed", async () => {
   const { controller, factory, collector } = setup();

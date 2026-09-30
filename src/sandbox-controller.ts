@@ -11,6 +11,7 @@ import type { CredentialLease, CredentialVault } from "./credential-vault.ts";
 import type { ProviderReceiptVerifier } from "./capability-store.ts";
 import { sandboxIdentity, uuidV7 } from "./orchestration-identity.ts";
 import {refreshSharedTestCapability} from './shared-test-capability-refresh.ts';
+import {sharedTestResultHasBlocker} from './shared-test-result.ts';
 import type { OrchestrationRunRecord } from "./orchestration-store.ts";
 import type { ValidatedAgentOutcome } from "./workflow-evaluator.ts";
 import type { LoadedWorkflowDefinition, WorkflowJob } from "./workflow-definition.ts";
@@ -1253,6 +1254,9 @@ export class SandboxAgentController {
       let resultClass = job.agentRole === "reviewer"
         ? String(collection.result.reviewOutcome)
         : String(collection.result.outcome);
+      const contradictoryTestCompletion = job.inputs.includes("shared_test_context") &&
+        resultClass === "completed" && sharedTestResultHasBlocker(collection.result);
+      if (contradictoryTestCompletion) resultClass = "blocked";
       const resultReceiptIds = collection.result.providerReceipts;
       const mechanicalReceiptIds = collection.providerReceipts.map((receipt) => receipt.operationId);
       const declaredReceiptsMatch =
@@ -1382,6 +1386,9 @@ export class SandboxAgentController {
         expected: "collecting",
         state,
         resultClass,
+        resultDetail: contradictoryTestCompletion
+          ? "Shared-test report claimed completion with an unresolved blocker; original report retained in the manifest."
+          : null,
         manifestId: collection.manifestId,
         now: this.dependencies.now().toISOString(),
       });
