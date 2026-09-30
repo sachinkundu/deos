@@ -45,6 +45,10 @@ const request=async(method,payload={})=>{
 try {
   assert.equal((await control(new Request('https://test/',{method:'POST',body:'{}'}),env)).status,401);
   await request('bootstrap');
+  await assert.rejects(request('prepare',{scenario:'s02'}),/test_review_account_not_connected/);
+  assert.equal(created.length,0);
+  assert.equal(sql.prepare('SELECT COUNT(*) n FROM orchestration_runs').get().n,0);
+  assert.equal(sql.prepare('SELECT COUNT(*) n FROM lease_test_scenarios').get().n,0);
   const {D1BettaViewAccountStore}=await import(pathToFileURL(join(root,'src/review-continuation.ts')));
   await new D1BettaViewAccountStore(db).activate({projectId:'project',expectedRouteRevision:1,accessAccount:'reviewer@deos-test.invalid',githubUserId:7,linearUserId:'linear-user',linearAppActorId:'app',settingsActor:'reviewer@deos-test.invalid',providerEvidenceDigest:'b'.repeat(64),states:{humanReview:'review',inProgress:'work',merging:'merge'}},new Date().toISOString());
   const pull={id:9,number:9,state:'open',html_url:'https://github.com/owner/fixture/pull/9',base:{repo:{full_name:'owner/fixture'}},head:{ref:fixture.scope.branch,sha:'c'.repeat(40)}};

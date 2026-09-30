@@ -69,6 +69,8 @@ export async function control(request,env) {
   let saved=await db.prepare('SELECT * FROM lease_test_scenarios WHERE scenario_id=?').bind(scenario).first();
   if(value.method==='prepare') {
     if(saved)return Response.json({scenario,runId:saved.run_id,evidence:await evidence(env,saved.run_id)});
+    if(!/^s01(?:-|$)/.test(scenario) && !await db.prepare("SELECT 1 AS ready FROM project_bettaview_accounts WHERE project_id=? AND status='current'").bind(f.profile.projectId).first())
+      throw new Error('test_review_account_not_connected: complete the visible Settings account form before preparing review scenarios');
     const active=await db.prepare('SELECT s.* FROM lease_test_scenarios s JOIN orchestration_runs r ON r.run_id=s.run_id WHERE s.archived_key IS NULL ORDER BY s.created_at DESC LIMIT 1').first();
     if(active) {
       const original=await evidence(env,active.run_id),text=JSON.stringify(original);
