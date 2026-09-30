@@ -366,7 +366,7 @@ test(`published failure cleanup retains checked receipts without approval: ${inv
     } else {
       const saved=await settleUnpublishedReview(f.env,'run-1',f.lease,f.provider);
       const evidence=JSON.parse(await (await f.bucket.get(saved!.evidence_key))!.text());
-      assert.equal(evidence.version,2);
+      assert.equal(evidence.version,3);
       assert.equal(evidence.facts.reviews.receipts[0].receipt.id,123);
       assert.equal(evidence.settledFacts.reviews.deliveries[0].receipt.delivery_id,'delivery');
       assert.equal(f.state.patches,1);
