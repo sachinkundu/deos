@@ -111,7 +111,8 @@ export async function settleUnpublishedReview(env:Env & {IMPLEMENTATION_ENVIRONM
     if(facts[0].operations) {
       const operations=await query<{operation_id:string;run_id:string;capability:string;action:string;
         sanitized_target:string;request_digest:string;state:string;observed_pre_state:string;
-        latest_delivery_id:string|null;started_at:string;review_id:string|null}>(
+        latest_delivery_id:string|null;started_at:string;completed_at:string|null;
+        provider_updated_at:string|null;review_id:string|null}>(
         "SELECT * FROM provider_operations WHERE capability<>'fixture_input' ORDER BY operation_id");
       if(operations.length!==facts[0].operations || operations.some(op=>
           op.capability!=='linear.transition' || op.review_id!==null ||
@@ -128,6 +129,43 @@ export async function settleUnpublishedReview(env:Env & {IMPLEMENTATION_ENVIRONM
             op.operation_id===`${op.run_id}:review:linear-enter-human-gate:1`) {
           fixtureOperations.push({operation:op,receipt:null});continue;
         }
+        const scenario=scenarios.find(s=>s.scenario_run_id===op.run_id)!;
+        // The second s12 move can race gate entry. In that case the candidate
+        // restores review through enter_human_gate rather than linear-repair.
+        // Require the exact signed, forwarded source and return before cleanup.
+        if(op.action==='enter_human_gate') {
+          if(!/^s12(?:-|$)/.test(scenario.scenario_id) ||
+              op.operation_id!==`${op.run_id}:review:linear-enter-human-gate:1` ||
+              !['succeeded','reconciled'].includes(op.state) ||
+              op.observed_pre_state!==fixture.profile.states.work || !op.latest_delivery_id ||
+              !op.provider_updated_at || !Number.isFinite(Date.parse(op.started_at)) ||
+              !op.completed_at || !Number.isFinite(Date.parse(op.completed_at)) ||
+              Date.parse(op.completed_at)<Date.parse(op.started_at))
+            throw new Error('test_unpublished_restoration_scope_changed');
+          const sources=(await env.DB.prepare(`SELECT e.* FROM test_review_forwarded_events f
+            JOIN test_review_fixture_events e ON e.delivery_id=f.delivery_id
+            JOIN deliveries d ON d.delivery_id=e.delivery_id AND d.payload_hash=e.payload_sha
+            WHERE f.lease_id=? AND f.scenario_id=? AND e.resource_id=? AND e.issue_id=?
+              AND e.from_state_id=? AND e.to_state_id=? AND e.actor_id=?
+              AND julianday(e.provider_time)=julianday(?)
+              AND julianday(e.provider_time)<=julianday(?)`)
+            .bind(leaseId,scenario.scenario_id,fixture.resourceId,fixture.issueId,
+              fixture.profile.states.review,fixture.profile.states.work,env.LINEAR_APP_ACTOR_ID,
+              op.provider_updated_at,op.started_at).all()).results;
+          const receipt=await env.DB.prepare(`SELECT e.* FROM test_review_forwarded_events f
+            JOIN test_review_fixture_events e ON e.delivery_id=f.delivery_id
+            JOIN deliveries d ON d.delivery_id=e.delivery_id AND d.payload_hash=e.payload_sha
+            WHERE f.lease_id=? AND f.scenario_id=? AND e.delivery_id=? AND e.resource_id=?
+              AND e.issue_id=? AND e.from_state_id=? AND e.to_state_id=? AND e.actor_id=?
+              AND julianday(e.provider_time)>=julianday(?)
+              AND julianday(e.provider_time)<=julianday(?)`)
+            .bind(leaseId,scenario.scenario_id,op.latest_delivery_id,fixture.resourceId,fixture.issueId,
+              fixture.profile.states.work,fixture.profile.states.review,env.LINEAR_APP_ACTOR_ID,
+              op.started_at,op.completed_at).first();
+          if(sources.length!==1 || !receipt)
+            throw new Error('test_unpublished_restoration_receipt_missing');
+          fixtureOperations.push({operation:op,source:sources[0],receipt});continue;
+        }
         const prefix=`${op.run_id}:review:linear-repair:`;
         const sourceDelivery=op.operation_id.startsWith(prefix)&&op.operation_id.endsWith(':1')
           ? op.operation_id.slice(prefix.length,-2):'';
@@ -135,7 +173,6 @@ export async function settleUnpublishedReview(env:Env & {IMPLEMENTATION_ENVIRONM
             op.observed_pre_state!==fixture.profile.states.work || !sourceDelivery || !op.latest_delivery_id ||
             (op.state==='pending' && op.latest_delivery_id!==sourceDelivery))
           throw new Error('test_unpublished_restoration_scope_changed');
-        const scenario=scenarios.find(s=>s.scenario_run_id===op.run_id)!;
         const source=await env.DB.prepare(`SELECT e.* FROM test_review_forwarded_events f
           JOIN test_review_fixture_events e ON e.delivery_id=f.delivery_id
           JOIN deliveries d ON d.delivery_id=e.delivery_id AND d.payload_hash=e.payload_sha

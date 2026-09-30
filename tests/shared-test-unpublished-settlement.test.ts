@@ -157,6 +157,72 @@ test(`cleanup ${scenario} ${operationState} restoration requires signed source a
   }finally{f.db.close();}
 });
 
+for(const operationState of ['succeeded','reconciled'])
+for(const invalid of [null,'scenario','operation','pending','pre-state','digest','source-hash',
+  'source-actor','source-forward','source-time','ambiguous-source','return-hash','return-actor',
+  'return-forward','return-time','latest','completed','completion-before-return'] as const)
+test(`s12 raced gate entry needs exact signed restoration evidence (${operationState}, ${invalid??'valid'})`,async()=>{
+  const f=fixture();
+  try {
+    const profile={repository:'owner/test',projectId:'project',teamId:'team',githubUserId:1,
+      states:{review:'review-state',work:'work-state',merge:'merge-state',canceled:'canceled-state'}};
+    const text=JSON.stringify(profile),hash=await sha256Hex(text);
+    f.db.sqlite.prepare('INSERT INTO implementation_test_profiles VALUES (?,?,?,?,?,?)')
+      .run('run-1',`github-linear-review-v1@${hash}`,text,hash,'now','operator');
+    f.db.sqlite.prepare(`INSERT INTO test_review_fixtures
+      (resource_id,run_id,attempt_id,lease_id,kind,slot_id,allocation_op,provider,status,metadata_json,created_at,updated_at)
+      VALUES ('fixture','run-1','attempt-1',?,'safe_test','slot','allocate','github-linear-review-v1','ready',?,'now','now')`)
+      .run(f.lease,JSON.stringify({profile,branch:'deos/canary/attempt-1',head:'c'.repeat(40),pullNumber:1,issueId:'fixture-issue'}));
+    const scenario=invalid==='scenario'?'s11':'s12';
+    f.db.sqlite.prepare('UPDATE test_review_scenarios SET scenario_id=?').run(scenario);
+    for(const [id,from,to,time] of [
+      ['source','review-state','work-state','2026-09-29T16:00:00.000000+00:00'],
+      ['restored','work-state','review-state','2026-09-29T16:00:02Z'],
+      ...(invalid==='ambiguous-source'?[['source-duplicate','review-state','work-state','2026-09-29T16:00:00Z']]:[]),
+    ]) {
+      f.db.sqlite.prepare("INSERT INTO deliveries (delivery_id,payload_hash,received_at,classification) VALUES (?,'hash',?,'test_review_fixture')").run(id,time);
+      f.db.sqlite.prepare("INSERT INTO test_review_fixture_events VALUES (?,'fixture','fixture-issue','app-actor',?,?,?,'hash',?,'user')").run(id,from,to,time,time);
+      f.db.sqlite.prepare("INSERT INTO test_review_forwarded_events VALUES (?,?,?,?)").run(f.lease,scenario,id,time);
+    }
+    const operation={operation_id:'scenario-1:review:linear-enter-human-gate:1',run_id:'scenario-1',
+      capability:'linear.transition',action:'enter_human_gate',sanitized_target:'review-state',
+      request_digest:await sha256Hex(JSON.stringify({issueId:'fixture-issue',targetStateId:'review-state',action:'enter_human_gate'})),
+      state:operationState,observed_pre_state:'work-state',latest_delivery_id:'restored',
+      provider_updated_at:'2026-09-29T16:00:00.000Z',started_at:'2026-09-29T16:00:01Z',
+      completed_at:'2026-09-29T16:00:03Z',review_id:null};
+    f.state.operations=1;f.state.operationRows=[operation];
+    if(invalid==='operation')operation.operation_id='scenario-1:review:linear-enter-human-gate:2';
+    if(invalid==='pending')operation.state='pending';
+    if(invalid==='pre-state')operation.observed_pre_state='merge-state';
+    if(invalid==='digest')operation.request_digest='changed';
+    if(invalid==='source-hash')f.db.sqlite.exec("UPDATE deliveries SET payload_hash='changed' WHERE delivery_id='source'");
+    if(invalid==='source-actor')f.db.sqlite.exec("UPDATE test_review_fixture_events SET actor_id='stranger' WHERE delivery_id='source'");
+    if(invalid==='source-forward')f.db.sqlite.exec("DELETE FROM test_review_forwarded_events WHERE delivery_id='source'");
+    if(invalid==='source-time')operation.provider_updated_at='2026-09-29T15:59:59Z';
+    if(invalid==='return-hash')f.db.sqlite.exec("UPDATE deliveries SET payload_hash='changed' WHERE delivery_id='restored'");
+    if(invalid==='return-actor')f.db.sqlite.exec("UPDATE test_review_fixture_events SET actor_id='stranger' WHERE delivery_id='restored'");
+    if(invalid==='return-forward')f.db.sqlite.exec("DELETE FROM test_review_forwarded_events WHERE delivery_id='restored'");
+    if(invalid==='return-time')f.db.sqlite.exec("UPDATE test_review_fixture_events SET provider_time='2026-09-29T15:59:59Z' WHERE delivery_id='restored'");
+    if(invalid==='latest')operation.latest_delivery_id='foreign';
+    if(invalid==='completed')operation.completed_at='not-a-time';
+    if(invalid==='completion-before-return')operation.completed_at='2026-09-29T16:00:01.500Z';
+    if(invalid) {
+      await assert.rejects(settleUnpublishedReview(f.env,'run-1',f.lease,f.provider),/restoration_scope_changed|restoration_receipt_missing/);
+      assert.equal(f.state.patches,0);assert.equal(f.bucket.objects.size,0);
+    } else {
+      const saved=await settleUnpublishedReview(f.env,'run-1',f.lease,f.provider);
+      const evidence=JSON.parse(await (await f.bucket.get(saved!.evidence_key))!.text());
+      assert.equal(await sha256Hex(JSON.stringify(evidence)),saved!.evidence_sha256);
+      assert.deepEqual(evidence.facts.fixtureOperations,evidence.settledFacts.fixtureOperations);
+      assert.equal(evidence.settledFacts.fixtureOperations[0].source.delivery_id,'source');
+      assert.equal(evidence.settledFacts.fixtureOperations[0].receipt.delivery_id,'restored');
+      assert.equal(evidence.settledFacts.fixtureOperations[0].operation.state,operationState);
+      assert.equal(f.state.patches,1);
+      assert.equal(f.db.sqlite.prepare('SELECT COUNT(*) n FROM test_attestations').get()?.n,0);
+    }
+  }finally{f.db.close();}
+});
+
 for(const field of ['intents','decisions','operations'] as const) test(`recovery refuses existing ${field} before any workflow mutation`,async()=>{
   const f=fixture();f.state[field]=1;
   try {
