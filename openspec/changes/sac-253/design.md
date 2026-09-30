@@ -50,6 +50,7 @@ no Cloudflare, Access, Linear, or GitHub account credential.
 | Candidate build dispatch | Land the trusted `shared-test-candidate-build` GitHub workflow on the default branch before granting a live lease. Keep its build job free of provider credentials. Its separate upload job uses a bucket-scoped `SHARED_TEST_R2_UPLOAD_TOKEN` secret; the portal staging deploy token stays unchanged. The current GitHub App's Contents write grant can send the repository dispatch. | The workflow is present on `main`; one dispatch from the saved candidate commit yields a verified bundle in private R2 without giving the candidate process the upload secret. |
 | Browser-based app test | Configure separate Access protection for the lease app origins under `*.apps.deos-test.voxdez.com`, with a scoped service identity held by the trusted browser service. | Application and policy IDs, allowed origin, service identity scope, and a real browser admission check. |
 | BettaView test reviewer | Reuse the existing trusted `IMPLEMENTATION_TEST_GITHUB_TOKEN` and the checked `github-linear-review-v1` profile. The coordinator reads GitHub's current numeric user ID and compares it with that frozen profile before admitting the session or forwarding a request. The candidate receives only an opaque session and scoped provider responses. | A real identity read, a ready disposable fixture, a lease app session, and scoped GitHub reads and writes through the actual candidate backend. No new OAuth callback or secret is required for this automated reviewer path. |
+| A test plan with more than one person | Before freezing the demo plan, confirm that each required test identity exists and is allowed by the test profile. A second checked GitHub user or a different Linear user needs an owner-approved test setup. The agent must not add an account, permission, or credential to fill this gap. | Name the available test roles and how each planned identity case can run. If the setup has one identity, the owner must choose whether to supply another or approve a different evidence method before that case can be completed. |
 | Provider visual proof | Keep the connected external browser signed in to Linear with access to the saved DEOS issue. The Sandbox agent never receives that session. | A real issue screenshot showing the saved issue key and provider event state; the trusted sanitizer must pass before a public copy is linked. |
 | Provider test and cleanup | Put the marker-signing key and any required provider or cleanup credentials in trusted services with the narrow scopes in this design. | Presence and scope checks without exposing secret values to the agent, plus a successful owned-item removal and absence read-back. |
 
@@ -90,6 +91,14 @@ It binds one-use state and handoffs to an exact lease and app session, and keeps
 any user token encrypted in the coordinator. Enabling it would require the
 operator to register the callback and supply the existing GitHub App secret.
 Those settings are not prerequisites for the automated test reviewer above.
+
+The inherited SAC-182 plan includes two distinct-person checks: reconnecting
+Settings to a different Linear user and rejecting a different checked GitHub
+user against a frozen account link. The current test profile admits one checked
+reviewer. Same-user rotation and forged page fields do not prove those two
+checks. They remain pending owner input; automated rejection tests do not waive
+the live evidence requirement on their own. This prerequisite must be raised
+during design and demo planning, before the implementation depends on it.
 
 Staging base initialization is automated. The trusted coordinator reads
 `/api/version` from both staging Workers through service bindings and saves the

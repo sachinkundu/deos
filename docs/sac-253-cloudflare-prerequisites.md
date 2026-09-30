@@ -119,3 +119,20 @@ sanitized screenshots, and retained-failure cleanup. A successful full review
 flow, success closure, and lasting report remain separate proof gates.
 
 Cloudflare documents the [eager redirect cookie](https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/authorization-cookie/), [wildcard hostname matching](https://developers.cloudflare.com/cloudflare-one/access-controls/policies/app-paths/), and [service token setup](https://developers.cloudflare.com/cloudflare-one/access-controls/service-credentials/service-tokens/).
+
+## Test identities must be agreed before the demo
+
+Working Cloudflare Access does not supply a second GitHub or Linear user. The
+current test profile has one checked reviewer. It can exercise normal reviews,
+retries, account rotation, and forged-page rejection with that existing account.
+
+The inherited SAC-182 plan also asks for a different Linear user on reconnect
+and a different checked GitHub user against a frozen account link. Those cases
+need an owner decision: provide an approved second test identity, or accept
+automated rejection coverage for those two cases. Same-account checks do not
+count as different-person proof. No account, token, or permission is changed
+automatically, and an unanswered request does not waive a test.
+
+Future design handoffs must list the needed test roles, the available fixture
+identities, and any owner setup before freezing the demo plan. This avoids
+discovering a missing account only after implementation and deployment.
