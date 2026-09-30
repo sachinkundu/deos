@@ -1095,3 +1095,15 @@ grants no test or release approval.
 The corrected candidate is `b2596f7e211f20a289e362971e489857f99cd0ea`. Its
 bundles were built from a clean checkout, uploaded, and hash-checked. The prior
 results do not grant this new commit a pass. It requires fresh lease proof.
+
+### Correction to the old review gallery
+
+The old PR body still embedded the 13 rejected scenario-fixture images and
+linked the obsolete PR46 command proof as current evidence. The original
+manifest at `96d79543e2f260d7eab67c65062ab2b7a053c391` remains intact. The
+supported `selectReviewProof` function was applied to its exact IDs with an
+explicit reason for each omission. The
+[omission record](sac182-historical-proof-omissions.json) keeps all 14 reasons,
+the prior omissions, and the three real-app images as historical partial proof.
+Those three images do not prove the current candidate either. The old checklist
+that claimed all 12 cases is withdrawn from the current proof.
