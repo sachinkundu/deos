@@ -30,7 +30,7 @@
 - [x] 4.6 Route one signed Linear webhook delivery using all saved event-time facts, atomically claim a live expectation, and retry a durable test Queue dispatch without rerouting duplicates.
 - [x] 4.7 Claim test Queue work with expiring tokens and stable work IDs; save the observed result against the exact task, run, lease, commit, pull request, and base.
 - [x] 4.8 Establish a lease-bound session for the existing checked test reviewer through the trusted edge. Keep the credential in the coordinator, recheck its numeric identity and fixture scope, and prove real scoped GitHub reads and writes through the exact candidate backend. Keep fixed-callback OAuth optional and operator-controlled.
-- [ ] 4.9 Deploy the exact SAC-182 candidate ReviewContinuation service and DeosWorkflow with lease-owned stores. Use the trusted, fixed-scope outbound provider transport and a lease-specific signing key. Prove actual linked review publication, signed Linear delivery, gate transition, and cleanup without advancing a live workflow.
+- [x] 4.9 Deploy the exact SAC-182 candidate ReviewContinuation service and DeosWorkflow with lease-owned stores. Use the trusted, fixed-scope outbound provider transport and a lease-specific signing key. Prove actual linked review publication, signed Linear delivery, gate transition, and cleanup without advancing a live workflow.
 
 ## 5. Proof, cleanup, and portal
 

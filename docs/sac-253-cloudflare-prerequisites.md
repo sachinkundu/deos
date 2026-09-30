@@ -13,8 +13,11 @@ reviewer for the automated lease app. It keeps the credential in the trusted
 coordinator and limits requests to the disposable fixture. This removes the
 callback and client-secret setup from the automated test prerequisites.
 
-The candidate backend, review service, and Workflow still need live proof.
-A successful identity check alone is not a completed review test.
+On 30 September, the exact candidate backend, review service, and Workflow
+published real reviews, consumed signed Linear events, and traversed the linked
+gates. The [V20 audit](evidence/sac-253/sac182-v20-proof.md) records these checks
+and verified cleanup. Full scenario proof still has the stated visual and
+distinct-user gaps. An identity check alone is not a completed review test.
 
 An optional interactive OAuth path has a fixed callback at
 `https://deos-queue-consumer-ts.skundu.workers.dev/shared-test/github/callback`.
@@ -115,8 +118,9 @@ The [live readback](evidence/sac-253/staging-live.md) includes the two source
 commits, build digests, deployment versions, and D1 pointer. An authenticated
 Brave visit to `deos-test.voxdez.com` now says the site is ready for the next
 checked task. Later leases proved app Access, candidate deployment, browser admission,
-sanitized screenshots, and retained-failure cleanup. A successful full review
-flow, success closure, and lasting report remain separate proof gates.
+sanitized screenshots, and retained-failure cleanup. The V20 audit now proves actual linked review flows and retained-failure cleanup.
+A complete twelve-scenario demo, success closure, and lasting report remain
+separate proof gates.
 
 Cloudflare documents the [eager redirect cookie](https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/authorization-cookie/), [wildcard hostname matching](https://developers.cloudflare.com/cloudflare-one/access-controls/policies/app-paths/), and [service token setup](https://developers.cloudflare.com/cloudflare-one/access-controls/service-credentials/service-tokens/).
 

@@ -95,5 +95,11 @@ artifacts and 54 captures remain in the private evidence record.
 - Settlement SHA-256: `737c37bddb01da0b9cecd4db5297fc788b7e6bc5e43334ffe3f84fbf96d1ec17`.
 - Absence SHA-256: `906a9183e0048d212979ac8577c442c1db55cf83b3786a53b8b1e55b049297fd`.
 
+![Shared test site Free after V20 cleanup](sac-182-v20-site-free.jpeg)
+
 The connected Brave browser also showed Free. Cleanup preserves the partial
 outcome and does not grant a demo attestation or production approval.
+
+This proves task 4.9: the exact candidate service and Workflow performed real
+linked review publication, signed delivery, gate traversal, and owned cleanup.
+The remaining full-demo, final-report, and release-guard tasks remain open.
