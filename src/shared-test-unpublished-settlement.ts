@@ -115,7 +115,7 @@ export async function settleUnpublishedReview(env:Env & {IMPLEMENTATION_ENVIRONM
         "SELECT * FROM provider_operations WHERE capability<>'fixture_input' ORDER BY operation_id");
       if(operations.length!==facts[0].operations || operations.some(op=>
           op.capability!=='linear.transition' || op.review_id!==null ||
-          !scenarios.some(s=>s.scenario_run_id===op.run_id && /^s12(?:-|$)/.test(s.scenario_id))))
+          !scenarios.some(s=>s.scenario_run_id===op.run_id)))
         throw new Error('test_unpublished_review_effects_present');
       const fixture=await sharedTestReviewFixture(env.DB,{run_id:runId,attempt_id:subject.attempt_id});
       for(const op of operations) {
@@ -128,9 +128,12 @@ export async function settleUnpublishedReview(env:Env & {IMPLEMENTATION_ENVIRONM
             op.operation_id===`${op.run_id}:review:linear-enter-human-gate:1`) {
           fixtureOperations.push({operation:op,receipt:null});continue;
         }
+        const prefix=`${op.run_id}:review:linear-repair:`;
+        const sourceDelivery=op.operation_id.startsWith(prefix)&&op.operation_id.endsWith(':1')
+          ? op.operation_id.slice(prefix.length,-2):'';
         if(op.action!=='restore_human_gate' || !['pending','succeeded','reconciled'].includes(op.state) ||
-            op.observed_pre_state!==fixture.profile.states.work || !op.latest_delivery_id ||
-            op.operation_id!==`${op.run_id}:review:linear-repair:${op.latest_delivery_id}:1`)
+            op.observed_pre_state!==fixture.profile.states.work || !sourceDelivery || !op.latest_delivery_id ||
+            (op.state==='pending' && op.latest_delivery_id!==sourceDelivery))
           throw new Error('test_unpublished_restoration_scope_changed');
         const scenario=scenarios.find(s=>s.scenario_run_id===op.run_id)!;
         const source=await env.DB.prepare(`SELECT e.* FROM test_review_forwarded_events f
@@ -138,19 +141,21 @@ export async function settleUnpublishedReview(env:Env & {IMPLEMENTATION_ENVIRONM
           JOIN deliveries d ON d.delivery_id=e.delivery_id AND d.payload_hash=e.payload_sha
           WHERE f.lease_id=? AND f.scenario_id=? AND e.delivery_id=? AND e.resource_id=?
             AND e.issue_id=? AND e.from_state_id=? AND e.to_state_id=?`)
-          .bind(leaseId,scenario.scenario_id,op.latest_delivery_id,fixture.resourceId,fixture.issueId,
+          .bind(leaseId,scenario.scenario_id,sourceDelivery,fixture.resourceId,fixture.issueId,
             fixture.profile.states.review,fixture.profile.states.work).first();
-        const receipt=await env.DB.prepare(`SELECT e.* FROM test_review_forwarded_events f
-          JOIN test_review_fixture_events e ON e.delivery_id=f.delivery_id
+        const receipt=await env.DB.prepare(`SELECT e.* FROM test_review_fixture_events e
           JOIN deliveries d ON d.delivery_id=e.delivery_id AND d.payload_hash=e.payload_sha
-          WHERE f.lease_id=? AND f.scenario_id=? AND e.resource_id=? AND e.issue_id=?
+          WHERE e.resource_id=? AND e.issue_id=?
             AND e.from_state_id=? AND e.to_state_id=? AND e.actor_id=?
             AND julianday(e.provider_time)>=julianday(?) ORDER BY e.provider_time LIMIT 1`)
-          .bind(leaseId,scenario.scenario_id,fixture.resourceId,fixture.issueId,
+          .bind(fixture.resourceId,fixture.issueId,
             fixture.profile.states.work,fixture.profile.states.review,env.LINEAR_APP_ACTOR_ID,op.started_at).first();
-        if(!source || !receipt)throw new Error('test_unpublished_restoration_receipt_missing');
+        if(!source || !receipt || (op.state!=='pending' && op.latest_delivery_id!==receipt.delivery_id))
+          throw new Error('test_unpublished_restoration_receipt_missing');
         // The candidate's pending row remains untouched in the retained store.
         // Signed provider evidence proves this bounded restoration took effect.
+        // A retired scenario may not have received the return delivery; this is
+        // cleanup evidence, not proof that its candidate reconciled the event.
         fixtureOperations.push({operation:op,source,receipt});
       }
     }

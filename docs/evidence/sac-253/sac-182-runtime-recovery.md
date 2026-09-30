@@ -958,3 +958,14 @@ The close record is explicitly `blocked_demo`. It creates no passing report
 or release approval. Both CI runs for `17a55b9` passed. The next candidate is
 `103b32380b773edcb3f6c1d6152e8c0231816297`, which includes the operator-item
 repair and fixes long status text in the narrow review rail.
+
+
+## V15 audit and follow-up repairs
+
+Candidate `103b32380b773edcb3f6c1d6152e8c0231816297` ran from 22:09 to 23:26 UTC on 29 September. The saved result is blocked, not a passed demo. Its artifact hashes are: result `f41076b0eeb3add6648fafadd2c9b0145fc8d38866728896722d7894ec9fc5bc`, validation `88467eeae829d93311c0ae7dcb5a84c92706403e2c79c5a1f84ccfa62577ac31`, and transcript `5b135d9e2578ed836486f3f6b2ac1d8f85acee5068b7e643d44ff27f756062bb`.
+
+The real review paths, retries, reply adoption, replacement lineage, and signed Linear moves were exercised. The different-user checks remain unproven. The runner also missed the final reply-adoption screenshot and the final recovery of the gate-lock guard scenario. Its claim that s12 was complete was too broad: signed return deliveries existed, but the candidate left restoration operations pending. The candidate repair now waits for each restoration receipt and preserves both fingerprints when an altered request reuses a review ID. These changes need a fresh live run.
+
+Cleanup stopped safely on `test_unpublished_review_effects_present`. A delayed s08 delivery had also caused a restoration; cleanup had assumed all such operations belonged to s12. The fix checks every known scenario against its exact fixture, source delivery, return delivery, actor, target, and digest. A return event may arrive after a scenario retires. Its signed root receipt can prove the cleanup effect without claiming that the candidate consumed it. Both pending and completed operation forms have positive and negative tests. No database has been deleted and no pass or release approval is granted by this repair.
+
+The verified public review image is [request changes](https://deos-shared-test-proof.skundu.workers.dev/proof/bededbb0-ffb1-4e49-bd7d-b68f0eac7118). The [approval image](https://deos-shared-test-proof.skundu.workers.dev/proof/8a6bd509-75a9-4431-b651-cbcd7d5eb398) shows the GitHub and Linear results. The first approval projection was rejected by OCR; a smaller crop passed. Original captures and the rejection remain private.

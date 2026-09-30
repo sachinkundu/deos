@@ -103,8 +103,9 @@ test('unpublished recovery settles only the owned scenario and retains its origi
   } finally {f.db.close();}
 });
 
-for(const invalid of [null,'hash','actor','action','run','receipt'] as const)
-test(`unpublished s12 restoration requires signed source and return receipts: ${invalid??'valid'}`,async()=>{
+for(const scenario of ['s12','s08-retired']) for(const operationState of ['pending','succeeded'])
+for(const invalid of [null,'hash','actor','action','run','receipt','source','latest'] as const)
+test(`cleanup ${scenario} ${operationState} restoration requires signed source and return receipts: ${invalid??'valid'}`,async()=>{
   const f=fixture();
   try {
     const profile={repository:'owner/test',projectId:'project',teamId:'team',githubUserId:1,
@@ -116,19 +117,20 @@ test(`unpublished s12 restoration requires signed source and return receipts: ${
       (resource_id,run_id,attempt_id,lease_id,kind,slot_id,allocation_op,provider,status,metadata_json,created_at,updated_at)
       VALUES ('fixture','run-1','attempt-1',?,'safe_test','slot','allocate','github-linear-review-v1','ready',?,'now','now')`)
       .run(f.lease,JSON.stringify({profile,branch:'deos/canary/attempt-1',head:'c'.repeat(40),pullNumber:1,issueId:'fixture-issue'}));
-    f.db.sqlite.exec("UPDATE test_review_scenarios SET scenario_id='s12'");
+    f.db.sqlite.prepare('UPDATE test_review_scenarios SET scenario_id=?').run(scenario);
     for(const [id,from,to,time] of [
       ['source','review-state','work-state','2026-09-29T16:00:00Z'],
       ['restored','work-state','review-state','2026-09-29T16:00:02Z'],
     ]) {
       f.db.sqlite.prepare("INSERT INTO deliveries (delivery_id,payload_hash,received_at,classification) VALUES (?,'hash',?,'test_review_fixture')").run(id,time);
       f.db.sqlite.prepare("INSERT INTO test_review_fixture_events VALUES (?,'fixture','fixture-issue','app-actor',?, ?,?,'hash',?,'user')").run(id,from,to,time,time);
-      f.db.sqlite.prepare("INSERT INTO test_review_forwarded_events VALUES (?,'s12',?,?)").run(f.lease,id,time);
+      if(id==='source'||scenario==='s12')
+        f.db.sqlite.prepare('INSERT INTO test_review_forwarded_events VALUES (?,?,?,?)').run(f.lease,scenario,id,time);
     }
     const restoration={operation_id:'scenario-1:review:linear-repair:source:1',run_id:'scenario-1',
       capability:'linear.transition',action:'restore_human_gate',sanitized_target:'review-state',
       request_digest:await sha256Hex(JSON.stringify({issueId:'fixture-issue',targetStateId:'review-state',action:'restore_human_gate'})),
-      state:'pending',observed_pre_state:'work-state',latest_delivery_id:'source',started_at:'2026-09-29T16:00:01Z',review_id:null};
+      state:operationState,observed_pre_state:'work-state',latest_delivery_id:operationState==='pending'?'source':'restored',started_at:'2026-09-29T16:00:01Z',review_id:null};
     const entered={...restoration,operation_id:'scenario-1:review:linear-enter-human-gate:1',
       action:'enter_human_gate',state:'reconciled',observed_pre_state:'review-state',latest_delivery_id:null,
       request_digest:await sha256Hex(JSON.stringify({issueId:'fixture-issue',targetStateId:'review-state',action:'enter_human_gate'}))};
@@ -137,7 +139,9 @@ test(`unpublished s12 restoration requires signed source and return receipts: ${
     if(invalid==='actor')f.db.sqlite.exec("UPDATE test_review_fixture_events SET actor_id='stranger' WHERE delivery_id='restored'");
     if(invalid==='action')restoration.action='publish_review';
     if(invalid==='run')restoration.run_id='foreign';
-    if(invalid==='receipt')f.db.sqlite.exec("DELETE FROM test_review_forwarded_events WHERE delivery_id='restored'");
+    if(invalid==='receipt')f.db.sqlite.exec("UPDATE deliveries SET payload_hash='missing' WHERE delivery_id='restored'");
+    if(invalid==='source')f.db.sqlite.exec("DELETE FROM test_review_forwarded_events WHERE delivery_id='source'");
+    if(invalid==='latest')restoration.latest_delivery_id='foreign';
     if(invalid) {
       await assert.rejects(settleUnpublishedReview(f.env,'run-1',f.lease,f.provider),/review_effects_present|restoration_scope_changed|restoration_receipt_missing/);
       assert.equal(f.state.patches,0);
@@ -145,7 +149,7 @@ test(`unpublished s12 restoration requires signed source and return receipts: ${
       const saved=await settleUnpublishedReview(f.env,'run-1',f.lease,f.provider);
       const evidence=JSON.parse(await (await f.bucket.get(saved!.evidence_key))!.text());
       assert.equal(evidence.settledFacts.fixtureOperations[0].receipt.delivery_id,'restored');
-      assert.equal(evidence.settledFacts.fixtureOperations[0].operation.state,'pending');
+      assert.equal(evidence.settledFacts.fixtureOperations[0].operation.state,operationState);
       assert.equal(f.state.patches,1);
       assert.equal(f.db.sqlite.prepare('SELECT COUNT(*) n FROM test_attestations').get()?.n,0);
     }
