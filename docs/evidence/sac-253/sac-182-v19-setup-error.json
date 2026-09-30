@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "claim": "Original provider log for a failed test setup; not a review pass.",
+  "leaseId": "c69c8d6a74db4894d3f336071a52a36b6ee514de51ba23935fb06b79c1d11350",
+  "candidateCommit": "b2596f7e211f20a289e362971e489857f99cd0ea",
+  "occurredAt": 1790743926299,
+  "traceId": "4d64490a2ab9d4a9f547b4b3bde95ece",
+  "rayId": "a4309db94eb2dfa2",
+  "scriptVersion": {
+    "id": "43216684-d93b-485b-bac0-b756e320c7eb"
+  },
+  "source": {
+    "message": "D1_ERROR: UNIQUE constraint failed: test_review_scenarios.lease_id: SQLITE_CONSTRAINT (extended: SQLITE_CONSTRAINT_UNIQUE)",
+    "exception": {
+      "name": "Error",
+      "stack": "    at D1DatabaseSessionAlwaysPrimary._sendOrThrow (cloudflare-internal:d1-api:188:19)\n    at async cloudflare-internal:d1-api:137:19\n    at async SharedTestReviewScenarios.prepare (queue-consumer.js:50211:22)\n    at async SharedTestReviewScenarios.handle (queue-consumer.js:50279:32)\n    at async queue-consumer.js:145:16",
+      "timestamp": 1790743926299
+    }
+  }
+}

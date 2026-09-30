@@ -1107,3 +1107,57 @@ explicit reason for each omission. The
 the prior omissions, and the three real-app images as historical partial proof.
 Those three images do not prove the current candidate either. The old checklist
 that claimed all 12 cases is withdrawn from the current proof.
+
+## V19 scenario handover repair
+
+Candidate `b2596f7e211f20a289e362971e489857f99cd0ea` ran from 04:46 to
+04:57 UTC on 30 September and ended blocked. Settings connected and rotated the
+checked account. The injected account mismatch left two policies and a rejected
+audit row. The only run was created before connection and correctly kept its
+null account snapshot. The app showed its read-only explanation and also showed
+the unlinked-PR explanation. No review intent or continuation was created.
+
+The attempt could not prepare its next scenario. The
+[original Worker error](sac-182-v19-setup-error.json) names the actual cause:
+`UNIQUE constraint failed: test_review_scenarios.lease_id`. The guard retained
+the prior ready route, but the old index rejected a preparing successor beside
+it. This was a coordinator schema error, not missing GitHub or Linear access.
+Migration 0092 now allows one ready row and one preparing row. Activation retires
+the former and promotes the latter in one transaction. The real SQLite test
+covers a failed setup, retained old route, successful retry, and rejection of a
+second ready or preparing row. Type checking passed. The migration was read back
+from D1 at 05:04 UTC. Candidate code and account settings did not change.
+
+The run's immutable result is
+`cccaef8cc39b7f899799b3c17bcbfc12df0ac45d9e6e9dae454f58fc8006dd2d`.
+Its commands hash is
+`a24df0db825ceb16eed9a0b88dad890b928763b97dcaa005c8d376f27ff66ad9`;
+validation is `8576d4036ae49055b13c9c53a88d50ac83c43d800c1511c9b829a9175741dcb3`;
+transcript is `7f3251f3790be7d4db24987f10f69384e44db946ab576597016cf6fe76fc321e`.
+
+The selected [connected account](https://deos-shared-test-proof.skundu.workers.dev/proof/7e95b626-76ab-4ee6-a8eb-52b41b919232),
+[rotated account](https://deos-shared-test-proof.skundu.workers.dev/proof/2a8b18fa-3e30-4c8e-b3ea-8a770e0ab601),
+and [SAC-182 task](https://deos-shared-test-proof.skundu.workers.dev/proof/64893085-4735-4afc-8a3d-5d83d8d8a475)
+images passed public hash readback. The capture labeled mismatch has the same
+bytes as the rotated-account image; it is not visual evidence of the error.
+The rejected audit row proves that subcase. Other raw images remain private.
+Two attempted crops failed the strict sanitizer and were not published.
+
+The first close call encountered a D1 overload. Its original stack and cause
+were retained in provider logs and saved locally. The idempotent retry succeeded.
+At 05:05:05 UTC the site returned to Free, fence 38 and revision 3434. All seven
+resources read back absent. Cleanup retained all 131 tables, six runner artifacts,
+11 captures and proof records, and the database snapshot. The one scenario
+workflow was terminated. Readback verified the saved hashes. The result remains
+blocked and grants no test or release approval.
+
+- Failure evidence: `5acd9ecbce245080d25b3c1e37a754fdea28101dec1f222958a0241bd505accc`.
+- Settlement: `628b9074242a75b3c2680835d7e639c9d2e899c3b978fd52cc748c5c594ec772`.
+- Cleanup: `45d7ba841685029c2c87d8113308c85ce3cb1f4bd89b13ec23574dc7d4dc0d5d`.
+- Absence: `19d2bf3f6544e3dc22211adfef9fe83367704da2affb40e665db367bdacd5d58`.
+
+![Site free after V19 cleanup](sac-182-v19-site-free.jpeg)
+
+The same candidate has a fresh retry after this schema repair. Prior partial
+results do not substitute for that run. The two distinct-person checks still
+need the owner's account setup or an explicit choice of a different proof method.
