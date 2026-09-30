@@ -4,7 +4,7 @@ import {sharedTestReviewKey} from './shared-test-review-signing.ts';
 import {ImplementationProviderTest} from './implementation-provider-test.ts';
 import type {SharedTestReviewBinding} from './shared-test-review-provider.ts';
 import type {CapabilityClaims} from './capability-auth.ts';
-import {sharedReviewFaultKinds,type SharedReviewFaultKind} from './shared-test-review-faults.ts';
+import {armSharedReviewFault,sharedReviewFaultKinds,type SharedReviewFaultKind} from './shared-test-review-faults.ts';
 
 /** Bounded fixture operations. Callers cannot choose a database, provider
  * identity, query, event payload, workflow definition, or external target. */
@@ -157,15 +157,11 @@ export class SharedTestReviewScenarios {
           .bind(new Date().toISOString(),binding.leaseId,input.scenario).run();
         return Response.json({cleared:true});
       }
-      if(!sharedReviewFaultKinds.includes(input.kind as SharedReviewFaultKind))throw new Error('test_review_injection_invalid');
-      const injectionId=crypto.randomUUID();
-      const writes=[this.env.DB.prepare(`INSERT INTO test_review_fault_injections
-        (injection_id,lease_id,scenario_id,kind,state,armed_at) VALUES (?,?,?,?,'armed',?)`)
-        .bind(injectionId,binding.leaseId,input.scenario,input.kind,new Date().toISOString())];
-      if(input.reconciliationRead==='rate_limited')writes.push(this.env.DB.prepare(`INSERT INTO test_review_reply_read_faults
-        (injection_id,state) VALUES (?,'armed')`).bind(injectionId));
-      await this.env.DB.batch(writes);
-      return Response.json({injectionId,synthetic:true,kind:input.kind,reconciliationRead:input.reconciliationRead});
+      if(!sharedReviewFaultKinds.includes(input.kind as SharedReviewFaultKind))
+        return Response.json({error:'test_review_injection_invalid',allowedKinds:sharedReviewFaultKinds},{status:400});
+      const armed=await armSharedReviewFault(this.env.DB,binding.leaseId,input.scenario,
+        input.kind as SharedReviewFaultKind,input.reconciliationRead as 'rate_limited'|undefined);
+      return Response.json(armed,{status:'error' in armed?409:200});
     }
     if(input.operation==='evidence' && typeof input.scenario==='string') {
       await this.forward(binding);

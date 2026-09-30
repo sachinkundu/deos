@@ -137,6 +137,35 @@ test('review service transport only moves its live test issue and preserves fail
   assert.equal(fixtureWrites,4);
   assert.equal(db.prepare("SELECT state FROM test_review_scenarios WHERE scenario_id='s08'").get()!.state,'retired');
   assert.equal(db.prepare("SELECT scenario_run_id FROM test_review_scenarios WHERE state='ready'").get()!.scenario_run_id,'next-run');
+  const claims={...props,actions:['test_review_fixture']} as never;
+  const injection={version:1,operation:'inject',scenario:'s09',kind:'github_advance_after_reply'};
+  const firstInjection=await scenarios.handle(claims,injection);
+  assert.equal(firstInjection.status,200);
+  const firstArmed=await firstInjection.json() as {injectionId:string;state:string;reused:boolean};
+  assert.equal(firstArmed.state,'armed');assert.equal(firstArmed.reused,false);
+  const repeatInjection=await scenarios.handle(claims,injection);
+  assert.equal(repeatInjection.status,200);
+  assert.deepEqual(await repeatInjection.json(),{...firstArmed,reused:true});
+  assert.equal(db.prepare("SELECT COUNT(*) n FROM test_review_fault_injections WHERE kind='github_advance_after_reply'").get()!.n,1);
+  for(const state of ['consumed','cleared']) {
+    db.prepare('UPDATE test_review_fault_injections SET state=? WHERE injection_id=?').run(state,firstArmed.injectionId);
+    const repeated=await scenarios.handle(claims,injection);
+    assert.equal(repeated.status,200);
+    assert.deepEqual(await repeated.json(),{...firstArmed,reused:true,state});
+    assert.equal(db.prepare("SELECT COUNT(*) n FROM test_review_fault_injections WHERE kind='github_advance_after_reply'").get()!.n,1);
+  }
+  const lostReply={...injection,kind:'github_drop_reply_response',reconciliationRead:'rate_limited'};
+  const firstReply=await (await scenarios.handle(claims,lostReply)).json() as {injectionId:string};
+  const replayReply=await scenarios.handle(claims,lostReply);
+  assert.equal(replayReply.status,200);
+  assert.equal((await replayReply.json() as {injectionId:string}).injectionId,firstReply.injectionId);
+  const changedMode=await scenarios.handle(claims,{...injection,kind:'github_drop_reply_response'});
+  assert.equal(changedMode.status,409);
+  assert.equal((await changedMode.json() as {error:string}).error,'test_review_injection_parameters_changed');
+  assert.equal(db.prepare('SELECT COUNT(*) n FROM test_review_reply_read_faults').get()!.n,1);
+  const invalidKind=await scenarios.handle(claims,{...injection,kind:'not-a-fault'});
+  assert.equal(invalidKind.status,400);
+  assert.equal((await invalidKind.json() as {error:string}).error,'test_review_injection_invalid');
   db.prepare("UPDATE test_review_scenarios SET state='retired'").run();
   const response=await scenarios.handle({...props,actions:['test_review_fixture']} as never,
     {version:1,operation:'prepare',scenario:'s08'});
