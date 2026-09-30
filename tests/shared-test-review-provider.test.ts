@@ -6,6 +6,7 @@ import {sha256Hex} from '../src/implementation-hash.ts';
 import {SharedTestReviewProviderTransport} from '../src/shared-test-review-provider.ts';
 import {sharedTestReviewAssertion,sharedTestReviewKey} from '../src/shared-test-review-signing.ts';
 import {SharedTestReviewScenarios} from '../src/shared-test-review-scenarios.ts';
+import {ImplementationTestBucket} from './helpers/implementation-fixture.ts';
 
 test('review service transport only moves its live test issue and preserves failed scope reads',async()=>{
   const db=new DatabaseSync(':memory:');
@@ -47,7 +48,7 @@ test('review service transport only moves its live test issue and preserves fail
     run:async()=>({meta:{changes:Number(db.prepare(sql).run(...values as never[]).changes)}}),
     all:async()=>({results:db.prepare(sql).all(...values as never[])}),
   };}};}} as unknown as D1Database;
-  const env={DB:binding,LINEAR_API_URL:'https://api.linear.app/graphql',
+  const env={DB:binding,ARTIFACTS:new ImplementationTestBucket(),LINEAR_API_URL:'https://api.linear.app/graphql',
     LINEAR_APP_ACCESS_TOKEN:'private-token',IMPLEMENTATION_TEST_GITHUB_TOKEN:'reviewer-token'} as unknown as Env;
   let team='team',writes=0,scopeReads=0,scopeStatus=200;
   const transport=new SharedTestReviewProviderTransport(env,props,async(input,init)=>{
@@ -131,12 +132,61 @@ test('review service transport only moves its live test issue and preserves fail
   assert.equal(db.prepare("SELECT state FROM test_review_scenarios WHERE scenario_id='s09'").get()!.state,'preparing');
   assert.throws(()=>db.prepare("INSERT INTO test_review_scenarios VALUES (?,'s10',NULL,'preparing',NULL)").run(leaseId),/UNIQUE/);
   assert.throws(()=>db.prepare("INSERT INTO test_review_scenarios VALUES (?,'s10','other','ready','now')").run(leaseId),/UNIQUE/);
+  const pending=await scenarios.handle({...props,actions:['test_review_fixture']} as never,
+    {version:1,operation:'prepare',scenario:'s10'});
+  assert.equal(pending.status,409);
+  const pendingBody=await pending.json() as {scenario:string;recovery:string};
+  assert.equal(pendingBody.scenario,'s09');
+  assert.match(pendingBody.recovery,/exact scenario ID/);
   prepareFails=false;
   assert.deepEqual(await scenarios.prepare(props,'s09'),{runId:'next-run'});
   assert.deepEqual(controlCalls,['check_prepare','prepare','check_prepare','prepare']);
   assert.equal(fixtureWrites,4);
   assert.equal(db.prepare("SELECT state FROM test_review_scenarios WHERE scenario_id='s08'").get()!.state,'retired');
   assert.equal(db.prepare("SELECT scenario_run_id FROM test_review_scenarios WHERE state='ready'").get()!.scenario_run_id,'next-run');
+  // A lost setup response must not turn into a fresh app review or erase the
+  // uncertain operation. Retain the readback and use a bounded setup retry.
+  db.exec('CREATE TABLE test_review_fixture_operations(operation_id TEXT PRIMARY KEY,resource_id TEXT,state TEXT)');
+  const resetId='fixture:scenario-s05-initial-state';
+  db.prepare('INSERT INTO test_review_fixture_operations VALUES (?,\'fixture\',\'uncertain\')').run(resetId);
+  const setupCalls:string[]=[];
+  let currentIssue='test-issue',currentState='merge',retryFails=false;
+  scenarios.control=async(_binding,method)=>{assert.equal(method,'check_prepare');return {ready:true};};
+  scenarios.provider=async(_binding,value)=>{
+    setupCalls.push(String(value.operationId??value.operation));
+    if(value.operation==='linear.read')return {response:{issue:{id:currentIssue,state:{id:currentState}}}};
+    assert.equal(value.operation,'linear.move');
+    assert.equal(value.issueId,'test-issue');assert.equal(value.stateId,'review');
+    if(value.operationId==='scenario-s05-initial-state' || retryFails)
+      throw new Error('provider_test_operation_uncertain');
+    return {response:{}};
+  };
+  await scenarios.resetFixture(props,'s05');
+  assert.deepEqual(setupCalls,['scenario-s05-initial-state','linear.read','scenario-s05-initial-state-retry-1']);
+  assert.equal(db.prepare('SELECT state FROM test_review_fixture_operations WHERE operation_id=?').get(resetId)!.state,'uncertain');
+  setupCalls.length=0;currentState='review';
+  await scenarios.resetFixture(props,'s05');
+  assert.deepEqual(setupCalls,['scenario-s05-initial-state','linear.read']);
+  setupCalls.length=0;
+  db.prepare("UPDATE test_review_fixture_operations SET state='started'").run();
+  await assert.rejects(scenarios.resetFixture(props,'s05'),/operation_uncertain/);
+  assert.deepEqual(setupCalls,['scenario-s05-initial-state']);
+  db.prepare("UPDATE test_review_fixture_operations SET state='uncertain'").run();
+  currentIssue='another-issue';
+  await assert.rejects(scenarios.resetFixture(props,'s05'),/reset_issue_changed/);
+  currentIssue='test-issue';currentState='canceled';
+  await assert.rejects(scenarios.resetFixture(props,'s05'),/reset_unexpected_state/);
+  currentState='merge';retryFails=true;setupCalls.length=0;
+  for(const i of [1,2])db.prepare('INSERT INTO test_review_fixture_operations VALUES (?,\'fixture\',\'uncertain\')')
+    .run(resetId+`-retry-${i}`);
+  await assert.rejects(scenarios.resetFixture(props,'s05'),/retries_exhausted/);
+  assert.equal(setupCalls.filter(x=>x.includes('initial-state')).length,3);
+  const originalResetFailure=new Error('Linear isolated test HTTP 503: original connection termination');
+  let recorded:unknown;
+  scenarios.recordSetupFailure=async(_binding,scenario,error)=>{assert.equal(scenario,'s05');recorded=error;};
+  scenarios.provider=async()=>{throw originalResetFailure;};
+  await assert.rejects(scenarios.resetFixture(props,'s05'),error=>error===originalResetFailure);
+  assert.equal(recorded,originalResetFailure);
   const claims={...props,actions:['test_review_fixture']} as never;
   const injection={version:1,operation:'inject',scenario:'s09',kind:'github_advance_after_reply'};
   const firstInjection=await scenarios.handle(claims,injection);

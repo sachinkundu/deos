@@ -10,10 +10,15 @@ import {sharedTestGitHubReadOnlyTransportSql} from './shared-test-github-scope.t
  * retain that result only with its verified provider delivery and fixture scope. */
 export async function settleUnpublishedReview(env:Env & {IMPLEMENTATION_ENVIRONMENT_TOKEN?:string},
   runId:string,leaseId:string,request:typeof fetch=globalThis.fetch.bind(globalThis)) {
-  const scenarios=(await env.DB.prepare(`SELECT scenario_id,scenario_run_id FROM test_review_scenarios
-    WHERE lease_id=? ORDER BY scenario_id`).bind(leaseId).all<{scenario_id:string;scenario_run_id:string|null}>()).results;
-  if(!scenarios.length)return null;
-  if(scenarios.some(s=>!s.scenario_run_id))throw new Error('test_unpublished_scenario_allocation_uncertain');
+  const recordedScenarios=(await env.DB.prepare(`SELECT scenario_id,scenario_run_id,state FROM test_review_scenarios
+    WHERE lease_id=? ORDER BY scenario_id`).bind(leaseId).all<{scenario_id:string;scenario_run_id:string|null;state:string}>()).results;
+  if(!recordedScenarios.length)return null;
+  const unallocatedScenarios=recordedScenarios.filter(s=>!s.scenario_run_id);
+  if(unallocatedScenarios.some(s=>s.state!=='preparing'))throw new Error('test_unpublished_scenario_allocation_uncertain');
+  // A failed provider reset precedes candidate allocation. Keep that preparing
+  // record; the exact candidate run inventory below must prove no extra run was
+  // created. A lost allocation response still fails the inventory comparison.
+  const scenarios=recordedScenarios.filter(s=>s.scenario_run_id);
   const guard=async()=>{
     const row=await env.DB.prepare(`SELECT l.candidate_commit,l.attempt_id,e.fence,r.worker_name,r.workflow_name,
       r.compiled_sha256,d.remote_id AS database_id,d.provider_key AS database_name
@@ -218,7 +223,8 @@ export async function settleUnpublishedReview(env:Env & {IMPLEMENTATION_ENVIRONM
   const settledFacts=await checkEffects();
   if(JSON.stringify(facts.reviews)!==JSON.stringify(settledFacts.reviews))
     throw new Error('test_review_settlement_changed_during_stop');
-  const evidence=JSON.stringify({version:2,runId,leaseId,subject,facts,settledFacts,statuses,unfinishedReadRequests});
+  const evidence=JSON.stringify({version:3,runId,leaseId,subject,facts,settledFacts,statuses,
+    unallocatedScenarios,unfinishedReadRequests});
   if(new TextEncoder().encode(evidence).length>20_000_000)throw new Error('test_unpublished_evidence_too_large');
   const digest=await sha256Hex(evidence),key=`shared-test/failed/${leaseId}/unpublished/${digest}.json`;
   await env.ARTIFACTS.put(key,evidence,{onlyIf:{etagDoesNotMatch:'*'},customMetadata:{evidenceClass:'private-failure'}});

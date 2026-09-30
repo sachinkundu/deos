@@ -37,6 +37,7 @@ function fixture() {
     parts:[] as Record<string,unknown>[],attempts:[] as Record<string,unknown>[],
     content:[] as Record<string,unknown>[],githubComments:[] as Record<string,unknown>[],
     repairs:[] as Record<string,unknown>[],ops:[] as Record<string,unknown>[],retiredRuns:[] as Record<string,unknown>[],
+    extraRuns:[] as Record<string,unknown>[],
     githubWrites:0,githubReceipt:{id:123,user:{id:1},html_url:'https://github.com/owner/test/pull/1#pullrequestreview-123',
       state:'APPROVED',commit_id:'c'.repeat(40)}};
   const provider=async(input:RequestInfo|URL,init?:RequestInit)=>{
@@ -75,7 +76,7 @@ function fixture() {
       else if(sql.includes('review_repairs'))result=[{success:true,results:state.repairs}];
       else if(sql.includes('review_ops_items'))result=[{success:true,results:state.ops}];
       else if(sql.includes('SELECT run_id,status,terminal_at'))result=[{success:true,results:state.retiredRuns}];
-      else result=[{success:true,results:[{run_id:state.foreign==='run'?'foreign':'scenario-1',workflow_instance_id:'wf-v1-owned'}]}];
+      else result=[{success:true,results:[{run_id:state.foreign==='run'?'foreign':'scenario-1',workflow_instance_id:'wf-v1-owned'},...state.extraRuns]}];
     } else if(path.endsWith('/status')) {
       assert.equal(init?.method,'PATCH');assert.deepEqual(JSON.parse(String(init?.body)),{status:'terminate'});
       assert.equal(state.factReads,1);state.patches++;state.status='terminated';result={};
@@ -102,6 +103,26 @@ test('unpublished recovery settles only the owned scenario and retains its origi
     assert.equal(f.state.patches,1);
     assert.equal(f.db.sqlite.prepare('SELECT COUNT(*) n FROM test_review_unpublished_settlements').get()!.n,1);
   } finally {f.db.close();}
+});
+
+test('a failed setup is retained only when candidate inventory proves no unrecorded run exists',async()=>{
+  for(const created of [false,true]) {
+    const f=fixture();
+    try {
+      f.db.sqlite.prepare("INSERT INTO test_review_scenarios VALUES (?,'s02',NULL,'preparing',NULL)").run(f.lease);
+      if(created)f.state.extraRuns.push({run_id:'unrecorded-s02',workflow_instance_id:'wf-v1-unrecorded'});
+      if(created) {
+        await assert.rejects(settleUnpublishedReview(f.env,'run-1',f.lease,f.provider),/run_scope_changed/);
+        assert.equal(f.state.patches,0);
+      } else {
+        const saved=await settleUnpublishedReview(f.env,'run-1',f.lease,f.provider);
+        const evidence=JSON.parse(await (await f.bucket.get(saved!.evidence_key))!.text());
+        assert.deepEqual(evidence.unallocatedScenarios,[{scenario_id:'s02',scenario_run_id:null,state:'preparing'}]);
+        assert.equal(evidence.statuses.length,1);
+        assert.equal(f.db.sqlite.prepare("SELECT state FROM test_review_scenarios WHERE scenario_id='s02'").get()!.state,'preparing');
+      }
+    } finally {f.db.close();}
+  }
 });
 
 for(const scenario of ['s12','s08-retired']) for(const operationState of ['pending','succeeded'])

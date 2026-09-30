@@ -5,6 +5,8 @@ import {ImplementationProviderTest} from './implementation-provider-test.ts';
 import type {SharedTestReviewBinding} from './shared-test-review-provider.ts';
 import type {CapabilityClaims} from './capability-auth.ts';
 import {armSharedReviewFault,sharedReviewFaultKinds,type SharedReviewFaultKind} from './shared-test-review-faults.ts';
+import {SharedTestFailureStore} from './shared-test-failures.ts';
+import {sha256Hex} from './implementation-hash.ts';
 
 /** Bounded fixture operations. Callers cannot choose a database, provider
  * identity, query, event payload, workflow definition, or external target. */
@@ -52,9 +54,62 @@ export class SharedTestReviewScenarios {
       .call(binding.runId,binding.attemptId,[row.adapter_binding],{...value,resourceId:fixture.resourceId},row.run_id);
   }
 
+  async recordSetupFailure(binding:SharedTestReviewBinding,scenario:string,error:unknown) {
+    try {
+      await new SharedTestFailureStore(this.env.DB,this.env.ARTIFACTS).record({
+        ...binding,phase:'scenario_setup',workId:scenario,operation:'fixture.reset',
+        safeCode:'test_review_fixture_reset_failed'},error);
+    } catch (diagnostic) {
+      throw new AggregateError([error,diagnostic],'Fixture reset and diagnostic recording failed',{cause:error});
+    }
+  }
+
+  /** Reset only the disposable issue after the previous candidate gate settles.
+   * Each uncertain write keeps its ledger entry. Read back before a bounded,
+   * separately recorded attempt to set the same setup state. This never retries
+   * an app review publication or supplies a successful provider receipt for it. */
+  async resetFixture(binding:SharedTestReviewBinding,scenario:string) {
+    const fixture=await this.live(binding);
+    for(let attempt=0;attempt<3;attempt++) {
+      const operationId=`scenario-${scenario}-initial-state${attempt?`-retry-${attempt}`:''}`;
+      try {
+        await this.provider(binding,{operation:'linear.move',operationId,
+          issueId:fixture.issueId,stateId:fixture.profile.states.review});
+        return;
+      } catch(error) {
+        if(!(error instanceof Error) || error.message!=='provider_test_operation_uncertain') {
+          await this.recordSetupFailure(binding,scenario,error);
+          throw error;
+        }
+        // A running operation is not uncertain and must never enter this path.
+        const previous=await this.env.DB.prepare(`SELECT state FROM test_review_fixture_operations
+          WHERE operation_id=? AND resource_id=?`)
+          .bind(`${fixture.resourceId}:${operationId}`,fixture.resourceId).first<{state:string}>();
+        if(previous?.state!=='uncertain')throw error;
+        const observed=await this.provider(binding,{operation:'linear.read'}) as {
+          response:{issue:{id:string;state:{id:string}}}};
+        if(observed.response?.issue?.id!==fixture.issueId)
+          throw new Error('test_review_reset_issue_changed',{cause:error});
+        const body=JSON.stringify({kind:'fixture_setup_readback',leaseId:binding.leaseId,
+          scenario,operationId,observedAt:new Date().toISOString(),response:observed.response});
+        const digest=await sha256Hex(body);
+        const key=`shared-test/review-setup/${binding.leaseId}/${scenario}/${digest}.json`;
+        await this.env.ARTIFACTS.put(key,body,{httpMetadata:{contentType:'application/json'}});
+        const saved=await this.env.ARTIFACTS.get(key);
+        if(!saved || await sha256Hex(await saved.text())!==digest)
+          throw new Error('test_review_reset_readback_retention_failed',{cause:error});
+        if(observed.response.issue.state.id===fixture.profile.states.review)return;
+        if(attempt===2)throw new Error('test_review_reset_retries_exhausted',{cause:error});
+        if(![fixture.profile.states.work,fixture.profile.states.merge].includes(observed.response.issue.state.id))
+          throw new Error('test_review_reset_unexpected_state',{cause:error});
+        await this.control(binding,'check_prepare',{scenario});
+      }
+    }
+  }
+
   async prepare(binding:SharedTestReviewBinding,scenario:string) {
     if(!/^s(?:0[1-9]|1[0-2])(?:-[a-z0-9-]{1,40})?$/.test(scenario))throw new Error('test_review_scenario_invalid');
-    const fixture=await this.live(binding);
+    await this.live(binding);
     const before=await this.env.DB.prepare('SELECT * FROM test_review_scenarios WHERE lease_id=? AND scenario_id=?')
       .bind(binding.leaseId,scenario).first<{state:string;scenario_run_id:string|null}>();
     if(before?.state==='retired')throw new Error('test_review_scenario_already_retired');
@@ -64,10 +119,12 @@ export class SharedTestReviewScenarios {
     await this.control(binding,'check_prepare',{scenario});
     if(!before)await this.env.DB.batch([
       this.env.DB.prepare("UPDATE test_review_fault_injections SET state='cleared',used_at=? WHERE lease_id=? AND state='armed'").bind(new Date().toISOString(),binding.leaseId),
-      this.env.DB.prepare("INSERT INTO test_review_scenarios (lease_id,scenario_id,state) VALUES (?,?,'preparing')").bind(binding.leaseId,scenario),
+      this.env.DB.prepare("INSERT OR IGNORE INTO test_review_scenarios (lease_id,scenario_id,state) VALUES (?,?,'preparing')").bind(binding.leaseId,scenario),
     ]);
-    await this.provider(binding,{operation:'linear.move',operationId:`scenario-${scenario}-initial-state`,
-      issueId:fixture.issueId,stateId:fixture.profile.states.review});
+    const preparing=await this.env.DB.prepare("SELECT scenario_id FROM test_review_scenarios WHERE lease_id=? AND state='preparing'")
+      .bind(binding.leaseId).first<{scenario_id:string}>();
+    if(preparing?.scenario_id!==scenario)throw new Error(`test_review_scenario_preparing:${preparing?.scenario_id??'changed'}`);
+    await this.resetFixture(binding,scenario);
     const pull=await this.provider(binding,{operation:'github.read',path:''}) as {response:unknown};
     const value=await this.control(binding,'prepare',{scenario,pull:pull.response});
     if(typeof value.runId!=='string')throw new Error('test_review_scenario_run_missing');
@@ -125,6 +182,11 @@ export class SharedTestReviewScenarios {
         .bind(binding.leaseId,input.scenario).first<{state:string}>();
       if(prior?.state==='retired')return Response.json({error:'test_review_scenario_already_retired',
         recovery:'Preserve the earlier evidence. Prepare a new scenario ID with a unique suffix, such as s11-final.'},{status:409});
+      const preparing=await this.env.DB.prepare("SELECT scenario_id FROM test_review_scenarios WHERE lease_id=? AND state='preparing'")
+        .bind(binding.leaseId).first<{scenario_id:string}>();
+      if(preparing && preparing.scenario_id!==input.scenario)return Response.json({
+        error:'test_review_scenario_preparing',scenario:preparing.scenario_id,
+        recovery:'Resume prepare with this exact scenario ID. A failed setup retains its record; do not choose another suffix.'},{status:409});
       return Response.json(await this.prepare(binding,input.scenario));
     }
     if(['seed_thread','advance_head','move_without_review'].includes(String(input.operation))) {
