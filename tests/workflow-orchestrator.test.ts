@@ -513,13 +513,15 @@ class NodeServices implements WorkflowNodeServices {
     return Promise.resolve({ providerOperationId: "gate-operation", state: "confirmed" as const });
   }
 
-  restoreHumanGate() {
+  restoreHumanGate(): ReturnType<WorkflowNodeServices["restoreHumanGate"]> {
     this.repairs += 1;
     if (this.failRepair) return Promise.reject(new Error("repair not confirmed"));
     return Promise.resolve({ providerOperationId: "repair-operation", state: "confirmed" as const });
   }
 
-  observeHumanGateDelivery() {
+  observeHumanGateDelivery(
+    ..._args: Parameters<WorkflowNodeServices["observeHumanGateDelivery"]>
+  ): ReturnType<WorkflowNodeServices["observeHumanGateDelivery"]> {
     return Promise.resolve({ providerOperationId: "gate-operation", state: "confirmed" as const });
   }
 }
@@ -808,9 +810,155 @@ test("unauthorized gate departure is repaired before a later human decision", as
   assert.equal(store.inbox.get("delivery-bot")?.state, "processed");
 });
 
-test("replaying a repaired gate does not reset its status before the next decision", async () => {
+test("repair waits for its own delivery across unrelated and duplicate wakes", async () => {
+  const store = new RuntimeStore();
+  const observed: string[] = [];
+  class PendingRepairServices extends NodeServices {
+    override async restoreHumanGate(): ReturnType<WorkflowNodeServices["restoreHumanGate"]> {
+      this.repairs += 1;
+      return { providerOperationId: "repair-operation", state: "awaiting_delivery" };
+    }
+    override async observeHumanGateDelivery(
+      ...[,, operation, event]: Parameters<WorkflowNodeServices["observeHumanGateDelivery"]>
+    ): ReturnType<WorkflowNodeServices["observeHumanGateDelivery"]> {
+      assert.equal(operation.providerOperationId, "repair-operation");
+      assert.equal(store.run.status, "awaiting_human");
+      assert.equal(store.transitions.filter(row => row.from_node === "approval").length, 0);
+      observed.push(event.delivery_id);
+      return { ...operation, state: event.delivery_id === "delivery-restored" ? "confirmed" : "awaiting_delivery" };
+    }
+  }
+  const services = new PendingRepairServices();
+  store.inbox.set("delivery-bot", inboxEvent("delivery-bot", "oauthclient"));
+  store.inbox.set("delivery-unrelated", { ...inboxEvent("delivery-unrelated", "oauthclient"), event_kind: "Comment.create" });
+  store.inbox.set("delivery-restored", {
+    ...inboxEvent("delivery-restored", "oauthclient"),
+    from_state_id: "next-state", to_state_id: "human-state", to_state_name: "Human Approval",
+  });
+  store.inbox.set("delivery-human", inboxEvent("delivery-human", "user"));
+  const result = await orchestrator(store, services).run(store.run.run_id,
+    new FakeStep(["delivery-bot", "delivery-bot", "delivery-unrelated", "delivery-restored", "delivery-human"]));
+  assert.equal(result.outcome, "succeeded");
+  assert.equal(services.repairs, 1);
+  assert.deepEqual(observed, ["delivery-unrelated", "delivery-restored"]);
+  assert.equal(store.transitions.filter(row => row.from_node === "approval").length, 1);
+  assert.equal(store.inbox.get("delivery-restored")?.state, "processed");
+});
+
+test("a newer human intent during repair leaves the gate blocked for reconciliation", async () => {
+  const store = new RuntimeStore();
+  class ConflictingRepairServices extends NodeServices {
+    override async restoreHumanGate(): ReturnType<WorkflowNodeServices["restoreHumanGate"]> {
+      return { providerOperationId: "repair-operation", state: "awaiting_delivery" };
+    }
+    override async observeHumanGateDelivery(
+      ...[,, operation]: Parameters<WorkflowNodeServices["observeHumanGateDelivery"]>
+    ): ReturnType<WorkflowNodeServices["observeHumanGateDelivery"]> {
+      return { ...operation, state: "manual_reconciliation_required" };
+    }
+  }
+  store.inbox.set("delivery-bot", inboxEvent("delivery-bot", "oauthclient"));
+  store.inbox.set("delivery-human", inboxEvent("delivery-human", "user"));
+  await assert.rejects(orchestrator(store, new ConflictingRepairServices()).run(store.run.run_id,
+    new FakeStep(["delivery-bot", "delivery-human"])), /newer intent prevents human-gate reconciliation/);
+  assert.equal(store.run.status, "awaiting_human");
+  assert.equal(store.transitions.filter(row => row.from_node === "approval").length, 0);
+  assert.equal(store.inbox.get("delivery-bot")?.state, "claimed");
+});
+
+for (const interruptAfterReturn of [false, true]) test(
+  `a review received during repair survives restart ${interruptAfterReturn ? "after" : "before"} the return delivery`,
+  async () => {
+    const store = new RuntimeStore();
+    let restored = false;
+    const continued: string[] = [];
+    class RepairServices extends NodeServices {
+      override async restoreHumanGate(): ReturnType<WorkflowNodeServices["restoreHumanGate"]> {
+        this.repairs += 1;
+        return { providerOperationId: "repair-operation", state: "awaiting_delivery" };
+      }
+      override async observeHumanGateDelivery(
+        ...[,, operation, event]: Parameters<WorkflowNodeServices["observeHumanGateDelivery"]>
+      ): ReturnType<WorkflowNodeServices["observeHumanGateDelivery"]> {
+        restored = event.delivery_id === "delivery-restored";
+        return { ...operation, state: restored ? "confirmed" : "awaiting_delivery" };
+      }
+      async continueBettaViewReview(
+        ...[run,, reviewId]: Parameters<NonNullable<WorkflowNodeServices["continueBettaViewReview"]>>
+      ) {
+        assert.equal(restored, true);
+        assert.equal(run.status, "awaiting_human");
+        assert.equal(store.run.status, "awaiting_human");
+        continued.push(reviewId);
+      }
+    }
+    store.inbox.set("delivery-bot", inboxEvent("delivery-bot", "oauthclient"));
+    store.inbox.set("delivery-restored", {
+      ...inboxEvent("delivery-restored", "oauthclient"),
+      from_state_id: "next-state", to_state_id: "human-state", to_state_name: "Human Approval",
+    });
+    store.inbox.set("delivery-human", inboxEvent("delivery-human", "user"));
+    const wakes = [
+      { deliveryId: "delivery-bot" },
+      { reviewId: "review-during-repair", attempt: 1 },
+    ];
+    if (interruptAfterReturn) wakes.push({ deliveryId: "delivery-restored" });
+    const cache = new Map<string, unknown>();
+    const replayStep = (): WorkflowStepLike => {
+      const occurrences = new Map<string, number>();
+      let waitIndex = 0;
+      return {
+        async do<T>(name: string, callback: () => Promise<T>): Promise<T> {
+          const occurrence = (occurrences.get(name) ?? 0) + 1;
+          occurrences.set(name, occurrence);
+          const key = `${name}:${occurrence}`;
+          if (!cache.has(key)) cache.set(key, structuredClone(await callback()));
+          return structuredClone(cache.get(key)) as T;
+        },
+        async waitForEvent<T>(): Promise<{ payload: Readonly<T> }> {
+          const payload = wakes[waitIndex++];
+          if (!payload) throw new Error("durable wait checkpoint");
+          return { payload: structuredClone(payload) as T };
+        },
+      };
+    };
+    const services = new RepairServices();
+    const workflow = orchestrator(store, services);
+    await assert.rejects(workflow.run(store.run.run_id, replayStep()), /durable wait checkpoint/);
+    assert.deepEqual(continued, interruptAfterReturn ? ["review-during-repair"] : []);
+    if (!interruptAfterReturn) wakes.push({ deliveryId: "delivery-restored" });
+    wakes.push({ deliveryId: "delivery-human" });
+    assert.equal((await workflow.run(store.run.run_id, replayStep())).outcome, "succeeded");
+    assert.deepEqual(continued, ["review-during-repair"]);
+    assert.equal(services.repairs, 1);
+    assert.equal(store.transitions.filter(row => row.from_node === "approval").length, 1);
+  },
+);
+
+test("a named allowed person is enforced for every workflow definition", async () => {
   const store = new RuntimeStore();
   const services = new NodeServices();
+  store.run.allowed_linear_user_id = 'user-1';
+  assert.notEqual(store.run.definition_id, 'implementation');
+  store.inbox.set('delivery-other-user', {
+    ...inboxEvent('delivery-other-user', 'user'), actor_id: 'app-reported-as-user',
+  });
+  store.inbox.set('delivery-human', inboxEvent('delivery-human', 'user'));
+  const result = await orchestrator(store, services).run(store.run.run_id,
+    new FakeStep(['delivery-other-user', 'delivery-human']));
+  assert.equal(result.outcome, 'succeeded');
+  assert.equal(services.repairs, 1);
+  assert.equal(store.inbox.get('delivery-other-user')?.state, 'processed');
+  assert.equal(store.transitions.filter(row => row.from_node === 'approval').length, 1);
+});
+
+for (const pendingRepair of [false, true]) test(`replaying a ${pendingRepair ? "pending" : "confirmed"} repair cannot repeat it or reset a confirmed gate`, async () => {
+  const store = new RuntimeStore();
+  const services = new NodeServices();
+  if (pendingRepair) services.restoreHumanGate = async () => {
+    services.repairs += 1;
+    return { providerOperationId: "repair-operation", state: "awaiting_delivery" };
+  };
   store.inbox.set("delivery-bot", inboxEvent("delivery-bot", "oauthclient"));
   store.inbox.set("delivery-human", inboxEvent("delivery-human", "user"));
   const cache = new Map<string, unknown>();
@@ -836,6 +984,11 @@ test("replaying a repaired gate does not reset its status before the next decisi
   const workflow = orchestrator(store, services);
   await assert.rejects(workflow.run(store.run.run_id, replayStep()), /durable wait checkpoint/);
   assert.equal(store.run.status, "awaiting_human");
+  if (pendingRepair) {
+    assert.equal(store.inbox.get("delivery-bot")?.state, "claimed");
+    store.inbox.set("delivery-restored", inboxEvent("delivery-restored", "oauthclient", "Human Approval"));
+    deliveries.push("delivery-restored");
+  }
   deliveries.push("delivery-human");
   const result = await workflow.run(store.run.run_id, replayStep());
   assert.equal(result.outcome, "succeeded");

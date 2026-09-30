@@ -65,6 +65,7 @@ export function focusReviewStory(story) {
   } : null;
   return {
     governed,
+    ...(story.reviewContinuation ? { reviewContinuation: story.reviewContinuation } : {}),
     acceptedTrace: story.acceptedTrace,
     events: (story.events || []).filter((event) => reviewStoryStage(event)),
   };

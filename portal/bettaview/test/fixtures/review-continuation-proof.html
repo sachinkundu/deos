@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BettaView review continuation proof</title>
+    <link rel="stylesheet" href="../../src/styles.css" />
+    <style>
+      .proof-banner { padding: .65rem 1rem; color: #3730a3; background: #eef2ff; border-bottom: 1px solid #c7d2fe; font: 700 .78rem/1.4 Inter, sans-serif; text-align: center; }
+      .proof-status { width: min(820px, 100%); margin: 1.25rem auto 0; }
+      .proof-status .continuation-card { margin: 0; }
+    </style>
+  </head>
+  <body>
+    <div class="proof-banner">Sanitized local preview · provider credentials and personal session data are not present</div>
+    <main id="settings" class="settings-page"></main>
+    <script type="module">
+      import { renderAccountSettings, renderContinuationStatus } from "../../src/review-continuation-view.js";
+
+      const settings = document.querySelector("#settings");
+      settings.innerHTML = renderAccountSettings({
+        policyVersion: 3,
+        githubUserId: 233623,
+        linearUserId: "verified-linear-user",
+      });
+      settings.insertAdjacentHTML("beforeend", `<div class="proof-status">${renderContinuationStatus(
+        { readiness: "ready" },
+        {
+          goalState: "In Progress",
+          github: { label: "GitHub review", status: "done", complete: true },
+          linear: { label: "Linear · In Progress", status: "done", complete: true },
+          outcome: "continued",
+          continued: true,
+          actions: [],
+        },
+      )}</div>`);
+      document.querySelectorAll("input, button").forEach((element) => { element.disabled = true; });
+    </script>
+  </body>
+</html>

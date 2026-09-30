@@ -89,6 +89,29 @@ test("GitHub authorization is required before a private pull request read", asyn
   assert.match(value.loginUrl, /^\/auth\/github\?/);
 });
 
+test("lease GitHub session uses its trusted transport without a provider token", async () => {
+  const runtime = env();
+  let sessionChecks = 0;
+  runtime.GITHUB_TEST_SESSION = async () => {
+    sessionChecks += 1;
+    return "lease-session";
+  };
+  runtime.GITHUB_REQUEST = async (url, options) => {
+    assert.equal(url, "https://api.github.com/user");
+    assert.equal(options.headers.Authorization, "Bearer lease-session");
+    return Response.json({ login: "reviewer" });
+  };
+  runtime.GITHUB_SESSIONS = undefined;
+  const response = await routeBettaViewRequest(new Request("https://bettaview.example/api/session", {
+    headers: { "CF-Access-Jwt-Assertion": "test" },
+  }), runtime, allowed);
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), {
+    authenticated: true, viewerLogin: "reviewer", logoutUrl: "/auth/logout",
+  });
+  assert.equal(sessionChecks, 1);
+});
+
 test("Access denial happens before static assets", async () => {
   let reads = 0;
   const runtime = env();

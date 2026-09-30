@@ -7,6 +7,7 @@ import {
   publishReply,
   publishReviewDecision,
 } from "./github-api.js";
+import { accountSettings, connectAccount, continuationAction, continuationStatus, publishContinuation } from "./review-continuation.js";
 export { GitHubSession } from "./session.js";
 
 const securityHeaders = {
@@ -61,6 +62,7 @@ function sessionStub(env, id) {
 }
 
 async function userToken(request, env) {
+  if (env.GITHUB_TEST_SESSION) return env.GITHUB_TEST_SESSION(request);
   const id = sessionId(request);
   if (!id) return null;
   const response = await sessionStub(env, id).fetch("https://session/token");
@@ -172,8 +174,9 @@ export async function routeBettaViewRequest(request, env, authenticate = verifyA
     });
   }
   const accessToken = accessTokenFromRequest(request);
+  let accessIdentity;
   try {
-    await authenticate(accessToken, {
+    accessIdentity = await authenticate(accessToken, {
       teamDomain: env.ACCESS_TEAM_DOMAIN,
       audience: env.ACCESS_AUD,
       allowedEmail: env.ALLOWED_EMAIL,
@@ -194,7 +197,7 @@ export async function routeBettaViewRequest(request, env, authenticate = verifyA
       if (url.pathname === "/api/session" && request.method === "GET") {
         const token = await userToken(request, env);
         if (!token) return json(200, { authenticated: false, loginUrl: `/auth/github?returnTo=${encodeURIComponent(`${url.pathname === "/api/session" ? "/" : url.pathname}${url.search}`)}` });
-        const viewer = await github(token, "/user");
+        const viewer = await github(token, "/user", {}, env.GITHUB_REQUEST || fetch);
         return json(200, { authenticated: true, viewerLogin: viewer.login, logoutUrl: "/auth/logout" });
       }
       if (["GET", "HEAD"].includes(request.method) && url.pathname.startsWith("/api/deos/process-attempts/")) {
@@ -209,16 +212,24 @@ export async function routeBettaViewRequest(request, env, authenticate = verifyA
         loginUrl: `/auth/github?returnTo=${encodeURIComponent(`/${url.searchParams.get("url") ? `?pr=${encodeURIComponent(url.searchParams.get("url"))}` : ""}`)}`,
       });
       if (url.pathname === "/api/pr" && request.method === "GET") {
-        return json(200, await loadPullRequest(token, url.searchParams.get("url") || "", env, accessToken));
+        return json(200, await loadPullRequest(token, url.searchParams.get("url") || "", env, accessToken, env.GITHUB_REQUEST || fetch));
+      }
+      if (url.pathname === '/api/settings/bettaview-account' && request.method === 'GET')
+        return json(200, await accountSettings(token, accessIdentity.email, env));
+      if (url.pathname === "/api/review-continuations" && request.method === "GET") {
+        return json(200, await continuationStatus(env, url.searchParams.get("reviewId") || ""));
       }
       if (request.method === "POST") {
         if (Number(request.headers.get("Content-Length") || "0") > 16 * 1024 * 1024) {
           return json(413, { error: "request_too_large" });
         }
         const body = await request.json();
-        if (url.pathname === "/api/comments/batch") return json(200, await publishBatchReview(token, body));
-        if (url.pathname === "/api/comments/reply") return json(200, await publishReply(token, body));
-        if (url.pathname === "/api/reviews") return json(200, await publishReviewDecision(token, body));
+        if (url.pathname === "/api/review-continuations/publish") return json(200, await publishContinuation(token, accessIdentity.email, env, body));
+        if (url.pathname === "/api/review-continuations/action") return json(200, await continuationAction(token, accessIdentity.email, env, body));
+        if (url.pathname === "/api/settings/bettaview-account") return json(200, await connectAccount(token, accessIdentity.email, env, body));
+        if (url.pathname === "/api/comments/batch") return json(200, await publishBatchReview(token, body, env.GITHUB_REQUEST || fetch));
+        if (url.pathname === "/api/comments/reply") return json(200, await publishReply(token, body, env.GITHUB_REQUEST || fetch));
+        if (url.pathname === "/api/reviews") return json(200, await publishReviewDecision(token, body, env.GITHUB_REQUEST || fetch));
       }
       return json(404, { error: "route_not_found" });
     } catch (error) {
@@ -228,7 +239,7 @@ export async function routeBettaViewRequest(request, env, authenticate = verifyA
   }
 
   if (!["GET", "HEAD"].includes(request.method)) return json(405, { error: "method_not_allowed" });
-  const assetPath = url.pathname === "/" ? "/index.html" : url.pathname.startsWith("/assets/") ? url.pathname : null;
+  const assetPath = ["/", "/settings"].includes(url.pathname) ? "/index.html" : url.pathname.startsWith("/assets/") ? url.pathname : null;
   if (!assetPath) return json(404, { error: "route_not_found" });
   const assetUrl = new URL(url);
   assetUrl.pathname = assetPath;

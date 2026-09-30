@@ -26,7 +26,10 @@ import type { LifecycleWriter } from "./lifecycle-telemetry.ts";
 export interface WorkflowWaitEvent {
   payload: Readonly<{ deliveryId: string }>;
 }
-type WorkflowWake = { deliveryId: string } | AttemptCompletionHint;
+type ReviewWake = { reviewId: string; attempt?: number };
+type WorkflowWake = { deliveryId: string } | ReviewWake | AttemptCompletionHint;
+const isReviewWake = (event: { payload: Readonly<WorkflowWake> }): event is { payload: Readonly<ReviewWake> } =>
+  "reviewId" in event.payload && typeof event.payload.reviewId === "string" && event.payload.reviewId.length > 0;
 const isLinearWake = (event: { payload: Readonly<WorkflowWake> }): event is WorkflowWaitEvent =>
   "deliveryId" in event.payload && typeof event.payload.deliveryId === "string" &&
   event.payload.deliveryId.length > 0;
@@ -62,6 +65,8 @@ export interface WorkflowNodeServices {
     node: HumanGateWorkflowNode,
     deliveryId: string,
   ): Promise<HumanGateOperation>;
+  continueBettaViewReview?(run: OrchestrationRunRecord, node: HumanGateWorkflowNode, reviewId: string): Promise<void>;
+  resolveBettaViewReviewChoice?(run: OrchestrationRunRecord, node: HumanGateWorkflowNode, event: NonNullable<Awaited<ReturnType<WorkflowRuntimeStore["findInboxEvent"]>>>): Promise<void>;
   observeHumanGateDelivery(
     run: OrchestrationRunRecord,
     node: HumanGateWorkflowNode,
@@ -145,6 +150,9 @@ export class WorkflowOrchestrator {
 
   async run(runId: string, step: WorkflowStepLike): Promise<{ outcome: string; runId: string }> {
     let completionHint: string | null = null;
+    // Rebuilt from durable wait results on replay. Reviews received while a
+    // gate operation is pending must wait for its signed confirmation.
+    const deferredReviews: { payload: Readonly<ReviewWake> }[] = [];
     for (;;) {
       const run = await step.do(`authority:${runId}`, async () => this.requireRun(runId));
       const instruction = instructionForNode(this.definition, run.current_node);
@@ -259,7 +267,7 @@ export class WorkflowOrchestrator {
           throw new Error("human-gate transition requires manual reconciliation");
         }
         if (operation.state === "awaiting_delivery") {
-          await this.observeGateOperation(step, run, gateNode, operation);
+          await this.observeGateOperation(step, run, gateNode, operation, deferredReviews);
           continue;
         }
         await step.do(`confirm-gate:${instruction.nodeId}:visit:${run.current_visit_sequence}`, async () => {
@@ -276,10 +284,16 @@ export class WorkflowOrchestrator {
         run.status = "awaiting_human";
       }
 
-      const event = await step.waitForEvent<WorkflowWake>(
+      const event = deferredReviews.shift() ?? await step.waitForEvent<WorkflowWake>(
         `linear-event:${instruction.nodeId}:visit:${run.current_visit_sequence}`,
         { type: "linear-event", timeout: "24h" },
       );
+      if (isReviewWake(event)) {
+        if (!this.services.continueBettaViewReview) throw new Error("BettaView review continuation service is unavailable");
+        await step.do(`continue-review:${event.payload.reviewId}:attempt:${event.payload.attempt ?? 1}:visit:${run.current_visit_sequence}`, () =>
+          this.services.continueBettaViewReview!(run, gateNode, event.payload.reviewId));
+        continue;
+      }
       if (!isLinearWake(event)) continue;
       const claimed = await step.do(`claim:${event.payload.deliveryId}`, async () =>
         this.store.claimInboxEvent(
@@ -288,6 +302,13 @@ export class WorkflowOrchestrator {
           this.now().toISOString(),
         ));
       if (claimed === null) continue;
+      if (this.services.resolveBettaViewReviewChoice) {
+        await step.do(`correlate-review-choice:${claimed.delivery_id}`, () =>
+          this.services.resolveBettaViewReviewChoice!(run, gateNode, claimed));
+      }
+      const bettaviewReview = this.store.findBettaViewReviewChoice
+        ? await step.do(`review-choice:${claimed.delivery_id}`, () => this.store.findBettaViewReviewChoice!(claimed.delivery_id))
+        : null;
       const decision = gateNode.expectedEventKind
         ? await this.services.implementationGateDecision!(run,gateNode,claimed)
         : claimed.event_kind.startsWith('Comment.') ? { kind: 'wait' as const, reason: 'unrelated_event' as const }
@@ -295,13 +316,15 @@ export class WorkflowOrchestrator {
         kind: "linear_event",
         deliveryId: claimed.delivery_id,
         actorId: claimed.actor_id,
-        actorType: run.definition_id === 'implementation' && claimed.actor_id !== run.allowed_linear_user_id ? 'unauthorized' : claimed.actor_type,
+        actorType: (run.allowed_linear_user_id || run.definition_id === 'implementation') &&
+          claimed.actor_id !== run.allowed_linear_user_id ? 'unauthorized' : claimed.actor_type,
         fromStateId: claimed.from_state_id,
         fromStateName: claimed.from_state_name,
         toStateName: claimed.to_state_name,
         humanGateStateId: this.options.humanGateStateId,
         approvalStateNames: this.options.approvalStateNames,
         rejectionStateNames: this.options.rejectionStateNames,
+        ...(bettaviewReview ? { bettaviewReview } : {}),
       });
       if (decision.kind === "repair_gate") {
         const operation = await step.do(
@@ -321,6 +344,13 @@ export class WorkflowOrchestrator {
         });
         if (operation.state === "manual_reconciliation_required") {
           throw new Error("human-gate repair requires manual reconciliation");
+        }
+        // The original gate-entry receipt cannot confirm a later restoration.
+        // Wait for the repair's own signed delivery before accepting a choice.
+        if (operation.state === "awaiting_delivery") {
+          while (!await this.observeGateOperation(step, run, gateNode, operation, deferredReviews)) {
+            // Unrelated or duplicate wakes do not confirm this operation.
+          }
         }
         // Replaying a past repair must not reset a gate that has since been
         // confirmed. Keep these writes behind the durable step checkpoint.
@@ -371,6 +401,12 @@ export class WorkflowOrchestrator {
         );
         continue;
       }
+      if (bettaviewReview && this.store.completeBettaViewReviewChoice) {
+        const completed = await this.store.completeBettaViewReviewChoice(
+          bettaviewReview.reviewId, claimed.delivery_id, this.now().toISOString(),
+        );
+        if (!completed) throw new Error("BettaView review choice finalization compare-and-set failed");
+      }
       await this.store.markInboxState(
         claimed.delivery_id,
         "claimed",
@@ -385,19 +421,24 @@ export class WorkflowOrchestrator {
     run: OrchestrationRunRecord,
     node: HumanGateWorkflowNode,
     operation: HumanGateOperation,
-  ): Promise<void> {
+    deferredReviews: { payload: Readonly<ReviewWake> }[],
+  ): Promise<boolean> {
     const event = await step.waitForEvent<WorkflowWake>(
       `linear-operation:${operation.providerOperationId}`,
       { type: "linear-event", timeout: "24h" },
     );
-    if (!isLinearWake(event)) return;
+    if (isReviewWake(event)) {
+      deferredReviews.push(event);
+      return false;
+    }
+    if (!isLinearWake(event)) return false;
     const claimed = await step.do(`claim:${event.payload.deliveryId}`, async () =>
       this.store.claimInboxEvent(
         event.payload.deliveryId,
         run.run_id,
         this.now().toISOString(),
       ));
-    if (claimed === null) return;
+    if (claimed === null) return false;
     const observed = await step.do(`observe:${operation.providerOperationId}:${claimed.delivery_id}`, async () =>
       this.services.observeHumanGateDelivery(run, node, operation, claimed));
     await this.store.markInboxState(
@@ -409,6 +450,7 @@ export class WorkflowOrchestrator {
     if (observed.state === "manual_reconciliation_required") {
       throw new Error("newer intent prevents human-gate reconciliation");
     }
+    return observed.state === "confirmed";
   }
 
   private async requireRun(runId: string): Promise<OrchestrationRunRecord> {

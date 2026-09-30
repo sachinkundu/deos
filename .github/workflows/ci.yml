@@ -57,6 +57,9 @@ jobs:
       - name: Install workflow-view dependencies
         run: npm ci --prefix prototypes/sac-123-workflow-view
 
+      - name: Install BettaView dependencies for review integration tests
+        run: npm ci --prefix portal/bettaview
+
       - name: Test TypeScript
         run: npm test
 
