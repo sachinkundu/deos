@@ -40,6 +40,21 @@ Linear deliveries. All 18 accepted part references match real GitHub receipts;
 marker was duplicated. None of the 34 step attempts was unfinished. The five
 non-continued intents caused no checked gate transition.
 
+The checked-in auditor repeats these joins from the saved facts. It also checks
+the provider actor, commit, part marker, event order, and selected workflow edge:
+
+```sh
+rtk proxy python3 scripts/verify_shared_test_review_evidence.py \
+  docs/evidence/sac-253/sac182-v20-facts.json \
+  --candidate b2596f7e211f20a289e362971e489857f99cd0ea \
+  --github-user 233623 --linear-actor f010429f-7734-4f3f-9b4b-13a4abb9b4ab
+```
+
+This checks saved receipt consistency. It makes no new live request and does not
+prove screenshots, distinct users, cleanup, or a completed demo. The tests reject
+changed actors, heads, markers, payloads, duplicate or missing transitions, and
+unfinished step attempts.
+
 | Case | Evidence and limit |
 | --- | --- |
 | s01 | Account policy 1 stayed frozen after same-account rotation to policy 2. A mismatch was rejected. A different Linear user's reconnect remains untested. |
