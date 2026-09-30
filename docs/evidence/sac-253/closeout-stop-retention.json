@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "leaseId": "cab6f898b4378c58dda63ee3fedbe8c598e595bb9d339b3a9932fe2232f1f7a5",
+  "attemptId": "df0c12f0-b9a6-4f48-95c3-44e8557a61d6",
+  "verifiedAt": "2026-09-30T16:01:48.544784+00:00",
+  "classification": "private operator stop and parent workflow failure",
+  "doesNotReplaceLeaseProofItems": true,
+  "receipts": [
+    {
+      "file": "sac253-v23-operator-stopped.json",
+      "key": "shared-test/operator-diagnostics/cab6f898b4378c58dda63ee3fedbe8c598e595bb9d339b3a9932fe2232f1f7a5/5964010cc6c0130e4fd7380e8b788c525ae0079e73aa015d6601e39478552db1/sac253-v23-operator-stopped.json",
+      "sha256": "5964010cc6c0130e4fd7380e8b788c525ae0079e73aa015d6601e39478552db1",
+      "bytes": 438,
+      "readbackVerified": true
+    },
+    {
+      "file": "sac253-v23-supervisor-stop.json",
+      "key": "shared-test/operator-diagnostics/cab6f898b4378c58dda63ee3fedbe8c598e595bb9d339b3a9932fe2232f1f7a5/e52774d5d9eba0be741ec551371a89cdeebd82e25bb565113cd2227cf0133f94/sac253-v23-supervisor-stop.json",
+      "sha256": "e52774d5d9eba0be741ec551371a89cdeebd82e25bb565113cd2227cf0133f94",
+      "bytes": 591,
+      "readbackVerified": true
+    },
+    {
+      "file": "sac253-v22-parent-workflow.json",
+      "key": "shared-test/operator-diagnostics/cab6f898b4378c58dda63ee3fedbe8c598e595bb9d339b3a9932fe2232f1f7a5/c9b036ad9577d86f74bb979da2a67ecd0594aa4918b9647688d2b7c2f282196f/sac253-v22-parent-workflow.json",
+      "sha256": "c9b036ad9577d86f74bb979da2a67ecd0594aa4918b9647688d2b7c2f282196f",
+      "bytes": 2843895,
+      "readbackVerified": true
+    }
+  ]
+}

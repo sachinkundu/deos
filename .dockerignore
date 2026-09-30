@@ -6,6 +6,8 @@
 !src/claude-review.ts
 !src/claude-diagnostics.ts
 !src/error-details.ts
+!scripts/
+!scripts/sanitize-shared-test-proof.mjs
 !shared/
 !shared/planning-language.mjs
 !vendor/

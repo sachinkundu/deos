@@ -32,15 +32,14 @@ class LocalPointer(StagingPointerClient):
         return next(self.reads)
 
 
-def traffic(revision="traffic-one"):
+def traffic(revision="version-one"):
     return {"revision": revision, "services": [
         {"serviceName": "bettaview", "sourceCommit": "a" * 40,
          "deployVersion": "version-a", "buildInputSha256": "b" * 64,
-         "appPaths": ["portal/bettaview/"], "providerPaths": [], "deploymentId": "deployment-a"},
+         "appPaths": ["portal/bettaview/"], "providerPaths": []},
         {"serviceName": "portal", "sourceCommit": "c" * 40,
          "deployVersion": "version-b", "buildInputSha256": "d" * 64,
-         "appPaths": ["portal/"], "providerPaths": ["src/deos/"],
-         "deploymentId": "deployment-b"},
+         "appPaths": ["portal/"], "providerPaths": ["src/deos/"]},
     ]}
 
 
@@ -52,7 +51,7 @@ def test_bootstrap_saves_full_manifest_before_stable_pointer():
         assert client.pointer()["state"] == "updating"
         saved = client.finish(work_id, manifest_id, "test")
         assert saved["state"] == "stable"
-        assert saved["traffic_revision"] == "traffic-one"
+        assert saved["traffic_revision"] == "version-one"
         assert client.query("SELECT COUNT(*) AS count FROM staging_release_services")["results"][0]["count"] == 2
     finally:
         client.sqlite.close()
@@ -235,3 +234,21 @@ def test_private_staging_version_read_uses_access_service_identity(monkeypatch):
 
     client = StagingPointerClient(token="cloudflare-token", opener=Opener())
     assert client._host({"host": "deos-staging.voxdez.com"})["sourceSha"] == "a" * 40
+
+
+def test_manifest_revision_uses_only_the_two_version_endpoints():
+    client = StagingPointerClient(token="unused")
+    seen = []
+
+    def version(service):
+        seen.append(service["name"])
+        return {"canonicalHost": service["host"], "sourceSha": "a" * 40,
+                "versionId": "11111111-1111-4111-8111-111111111111",
+                "buildInputSha256": "b" * 64}
+
+    client._host = version
+    first, second = client.traffic(), client.traffic()
+    assert first == second
+    assert seen == ["bettaview", "portal", "bettaview", "portal"]
+    assert len(first["revision"]) == 64
+    assert all("deploymentId" not in row for row in first["services"])

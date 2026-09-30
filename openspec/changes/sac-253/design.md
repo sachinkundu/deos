@@ -36,6 +36,80 @@ the test site before the site is wiped.
 - Provider keys in the agent, page, or browser.
 - Fake webhook input as proof of a real provider event.
 
+## Human-controlled prerequisites
+
+The design handoff must name account changes that an agent cannot make. An
+operator performs these steps and supplies non-secret read-back evidence before
+the dependent implementation or live test is enabled. The Sandbox agent receives
+no Cloudflare, Access, Linear, or GitHub account credential.
+
+| Before | Operator-owned setup | Read-back needed |
+| --- | --- | --- |
+| Status-page verification | Attach `deos-test.voxdez.com` to the status Worker and include it in the owner-only Access application. | The exact Worker domain mapping and an authenticated status-page visit. |
+| Pinned staging build reuse | Let the staging deploy credential write and read `shared-test/builds/` objects in the private DEOS artifact bucket. Each staging job saves and reads back the exact bundle before it deploys the version. BettaView also saves a compiled Worker module from the same source commit and pins it to the raw build digest. | A content-addressed bundle for each service whose bytes recompute the version endpoint's build digest, plus the checked BettaView module. |
+| Candidate build dispatch | Land the trusted `shared-test-candidate-build` GitHub workflow on the default branch before granting a live lease. Keep its build job free of provider credentials. Its separate upload job uses a bucket-scoped `SHARED_TEST_R2_UPLOAD_TOKEN` secret; the portal staging deploy token stays unchanged. The current GitHub App's Contents write grant can send the repository dispatch. | The workflow is present on `main`; one dispatch from the saved candidate commit yields a verified bundle in private R2 without giving the candidate process the upload secret. |
+| Browser-based app test | Configure separate Access protection for the lease app origins under `*.apps.deos-test.voxdez.com`, with a scoped service identity held by the trusted browser service. | Application and policy IDs, allowed origin, service identity scope, and a real browser admission check. |
+| BettaView test reviewer | Reuse the existing trusted `IMPLEMENTATION_TEST_GITHUB_TOKEN` and the checked `github-linear-review-v1` profile. The coordinator reads GitHub's current numeric user ID and compares it with that frozen profile before admitting the session or forwarding a request. The candidate receives only an opaque session and scoped provider responses. | A real identity read, a ready disposable fixture, a lease app session, and scoped GitHub reads and writes through the actual candidate backend. No new OAuth callback or secret is required for this automated reviewer path. |
+| A test plan with more than one person | Before freezing the demo plan, confirm that each required test identity exists and is allowed by the test profile. A second checked GitHub user or a different Linear user needs an owner-approved test setup. The agent must not add an account, permission, or credential to fill this gap. | Name the available test roles and how each planned identity case can run. If the setup has one identity, the owner must choose whether to supply another or approve a different evidence method before that case can be completed. |
+| Provider visual proof | Keep the connected external browser signed in to Linear with access to the saved DEOS issue. The Sandbox agent never receives that session. | A real issue screenshot showing the saved issue key and provider event state; the trusted sanitizer must pass before a public copy is linked. |
+| Provider test and cleanup | Put the marker-signing key and any required provider or cleanup credentials in trusted services with the narrow scopes in this design. | Presence and scope checks without exposing secret values to the agent, plus a successful owned-item removal and absence read-back. |
+
+The current Cloudflare dashboard steps and the status-login redirect fix are in
+[`docs/sac-253-cloudflare-prerequisites.md`](../../../docs/sac-253-cloudflare-prerequisites.md).
+
+### Test reviewer and actual candidate review runtime
+
+After Access and the lease app session pass, the trusted edge intercepts
+BettaView sign-in. For the automated demo it uses the existing test reviewer
+from the frozen provider profile. The coordinator checks the current numeric
+GitHub user ID, lease, fence, app session, and disposable fixture. It saves an
+opaque, short-lived session without copying the provider token. Each provider
+request repeats those checks and can reach only the saved fixture repository,
+branch, and pull request. Cleanup revokes the session and proves the fixture
+absent. This path needs no new provider setting or credential.
+
+The exact candidate commit includes the GitHub transport seam. Its own review
+API logic runs unchanged above that transport. The candidate also supplies its
+actual `ReviewContinuation` service and `DeosWorkflow` entrypoint. The trusted
+builder packages those exports from a clean checkout and pins the source and
+bundle hashes. The coordinator deploys that module with the lease's D1 and R2
+stores, a lease-specific service signing key, and its own test Workflow binding.
+It reads the running version twice before the app can use it.
+
+A trusted outbound transport holds the existing provider credentials. Fixed
+service-binding properties bind it to one run, attempt, lease, and fence.
+GitHub reads and Linear reads and transitions are restricted to the disposable
+fixture. Linear membership is checked before each write. The real candidate
+service owns account checks, review receipts, retries, and gate decisions;
+the transport must not manufacture a successful review or gate result. Real
+signed Linear deliveries remain distinguishable from labeled transport fault
+injection. No live workflow binding or production signing key enters the app.
+
+The fixed OAuth callback remains an optional interactive path at
+`https://deos-queue-consumer-ts.skundu.workers.dev/shared-test/github/callback`.
+It binds one-use state and handoffs to an exact lease and app session, and keeps
+any user token encrypted in the coordinator. Enabling it would require the
+operator to register the callback and supply the existing GitHub App secret.
+Those settings are not prerequisites for the automated test reviewer above.
+
+The inherited SAC-182 plan includes two distinct-person checks: reconnecting
+Settings to a different Linear user and rejecting a different checked GitHub
+user against a frozen account link. The current test profile admits one checked
+reviewer. Same-user rotation and forged page fields do not prove those two
+checks. They remain pending owner input; automated rejection tests do not waive
+the live evidence requirement on their own. This prerequisite must be raised
+during design and demo planning, before the implementation depends on it.
+
+Staging base initialization is automated. The trusted coordinator reads
+`/api/version` from both staging Workers through service bindings and saves the
+full manifest through its D1 binding. Two matching version reads are required.
+Each returned version is assumed to serve 100% of staging traffic. This does
+not need a Cloudflare deployment read or a human traffic check.
+
+If an operator cannot provide one of these prerequisites, keep the related
+grant or write gate disabled and revise this design before relying on it. Do
+not ask an agent to gain account-wide permissions to bridge the gap.
+
 ## Component diagram
 
 ```mermaid
@@ -51,7 +125,7 @@ flowchart LR
     C --> B[Trusted browser service]
     B --> E[Test edge gate]
     E --> T
-    O[Allowed person] --> P[test-deos.voxdez.com status]
+    O[Allowed person] --> P[deos-test.voxdez.com status]
     P --> C
     O --> M[Access repair page]
     M --> C
@@ -74,9 +148,9 @@ uses HMAC-SHA256 and `Linear-Signature`. It treats `Linear-Timestamp` as
 milliseconds. It uses `Linear-Delivery` as the one delivery key. It returns HTTP
 200 for an accepted, ignored, or repeat event.
 
-The root of `test-deos.voxdez.com` is the status page. Access guards the page and
+The root of `deos-test.voxdez.com` is the status page. Access guards the page and
 all test app routes. Candidate code runs on a separate lease host under
-`*.apps.test-deos.voxdez.com`, never on the portal origin. Portal cookies use a
+`*.apps.deos-test.voxdez.com`, never on the portal origin. Portal cookies use a
 `__Host-` name, have no `Domain` attribute, and never go to an app host. App
 sessions use a different host-only cookie and cannot call portal or repair
 routes. A person uses an allowed email. The cloud browser uses a short-lived
@@ -108,12 +182,29 @@ work uses the same path rule. It needs no special label.
 | --- | --- | --- |
 | 1 | Add or reload one waiting request. Give a new request a growing queue number. | Request save never grants the site. One run and node visit may have only one waiting candidate. |
 | 2 | Read Linear and save the task ID, key, title, and team. Save the GitHub repo, branch, pull request, and commit. | Reject a task outside the current DEOS team. Do not read a test label. |
-| 3 | Keep one staging release pointer. A deploy marks it `updating`, then writes one full, fixed manifest only after all services reach 100% and match a read-back. | The pointer has an owner, work ID, planned manifest, and due time. A dead update is checked against real traffic. Mixed or unknown traffic needs manual repair. |
+| 3 | Keep one staging release pointer. The coordinator reads both version endpoints and saves a full fixed manifest when the observed versions change. | The pointer has an owner, work ID, planned manifest, and due time during refresh. An interrupted refresh is checked against the running versions. |
 | 4 | The scheduled scanner checks waiting rows, then checks the oldest live waiter again. | A terminal or canceled run is marked `canceled` only after its Sandbox is gone. A superseded candidate is marked `superseded`. Its Workflow attempt, team, commit, and GitHub scope must still match. A short validation hold belongs only to the live queue head. |
-| 5 | Read real staging traffic and service versions twice. | Both reads must show the same 100% traffic state and the full stable manifest. Drift blocks grant. |
+| 5 | Read each staging service version twice. | Both reads must show the same full manifest. Treat each returned version as serving 100% by policy. Observed drift blocks grant. |
 | 6 | Grant in one D1 transaction. | It must see no owner, the right queue head, no older waiter, a stable base, and the same traffic revision. It then saves the base and first fence. |
-| 7 | Make lease-named test services and stores from fixed build input. | Each running service must match its saved source and deploy version before app or provider writes start. |
+| 7 | Make lease-named test services and stores from fixed build input. | Each running service reports its source commit, build input, staging base version, and its own deployed version twice. Save those readbacks before changing the lease from `preparing` to `active`. App and provider writes need `active`. |
 | 8 | Save a resource plan before each call that may create a remote item. | The plan has one work ID, safe provider name, lease, run, and fence. A retry finds the same item. |
+
+The portal test service gets its own lease-named D1 database and R2 bucket.
+The staging portal build bundle also pins the SQL migration files. The trusted
+coordinator applies that schema to the empty lease database before the test
+Worker serves app traffic; it never copies staging rows into the lease.
+Its activation check requires both records to have confirmed remote identities.
+The BettaView session Durable Object belongs to its separate lease-named Worker.
+The portal Worker is created first because BettaView binds to it. The BettaView
+Worker upload uses its checked compiled module, including package imports and
+the session class, from the exact pinned source commit.
+A lost store-create response leaves the saved plan uncertain; recovery looks up
+that exact name and never allocates a substitute name.
+Store deletion waits for a proved Worker absence and all required public proof.
+It uses the saved remote identity, reads the fixed name absent twice, and writes
+the resource and cleanup receipt in one guarded D1 transaction. An R2 bucket
+with remaining objects stays owned until its contents are removed and the
+provider confirms bucket absence.
 
 While the lease is `preparing` or `active`, the owning Workflow sends a
 coordinator heartbeat every 30 seconds. The saved deadline is two minutes after
@@ -124,7 +215,7 @@ driver does not need the dead Sandbox or Workflow to be present.
 
 A staging deploy can start after grant. It cannot change the base that the lease
 saved. A direct staging deploy causes drift. The next grant then waits for a new
-stable manifest made from real traffic.
+stable manifest made from the running version responses.
 
 ### Use the app
 
@@ -174,6 +265,15 @@ uses the revision-bound repair route described below; it never widens the patch.
 | 6 | Close in one guarded D1 transaction. | Check all proof and absence rows. Complete the exact test record. Save the close receipt. Clear the owner. Set the site to `free`. |
 | 7 | Build the final close report after commit from fixed D1 facts. Write it first, read it back, then replace `close pending` with its lasting URL and read the pull request body back. | A failed report or body update retries without taking the clean site back. No dangling URL is published. SAC-182 proof is not complete until the report and final body read back. |
 
+If preparation fails before activation, no app demo or provider event can exist.
+The coordinator keeps the original setup fault, fences the lease, and attaches a
+safe failed-setup note to the scoped pull request with read-back before deleting
+anything. The note states that no test passed. Cleanup still checks every
+planned resource and proves each owned item absent. An abort receipt records
+the fault, note hash, cleanup hash, and absence hash before the site becomes
+free. It never creates or completes a test attestation; the candidate must earn
+a new lease and the full proof set on a later attempt.
+
 The GitHub adapter first tests if a strong ETag update works. If it does, it
 uses `If-Match` and reads again after a clash. If it does not, a D1 lock guards
 DEOS writers. The adapter then does a marked read, merge, write, and read loop.
@@ -182,6 +282,25 @@ It saves the old body and hash. Any merge it cannot prove stops before cleanup.
 Cleanup may use a newer fence than setup used. The resource row keeps its create
 fence. The lease also keeps each fence it has used. Delete is safe only when the
 row and that lease history agree.
+
+An activated app can also fail before it establishes any review session. A
+blocked demo with no test attestation, provider review fixture, or GitHub
+session may use an explicit operator abort. The original result, transcript,
+command log, and every captured image must be retained in private storage and
+read back by hash first. The draft PR receives a read-back failure note. This
+is failed setup evidence; it must not claim that any app scenario passed.
+The old Sandbox must already be destroyed. The coordinator raises the fence,
+revokes browser use, settles accepted work, removes its exact marker, and
+checks every owned resource absent before writing a failed close receipt.
+No successful test attestation or normal test close row is created.
+
+A repaired draft can then be admitted through an exact-subject operator call.
+The old lease must be closed with the failed receipt. The old candidate and
+patch remain in the repair journal. The new draft head, base, tree, blobs, and
+artifact hashes must match live GitHub reads and the saved approved design.
+The new candidate needs a fresh path decision, lease, deployment, demo, proof,
+and close. The retired candidate cannot be automatically granted another
+lease. This repair does not change provider permissions or credentials.
 
 The repair page requires the same Access operator allowlist as Settings plus a
 fresh CSRF token. The coordinator rechecks the operator, repair ID, current
@@ -216,8 +335,25 @@ change that touches any app or provider root cannot use that result.
 
 The node ships only in a new immutable workflow version. Existing frozen runs
 keep their graph and cannot release an app candidate under the new guard. A new
-run is required instead of a compatibility handoff because no old safe node has
-the lease and evidence identities that the new node requires.
+run is required. For SAC-182, a trusted, exact-subject handoff seeds that new
+run from its stopped v43 run and PR #137. It does not change the v43 graph or
+claim that the old run performed the shared test. The new run owns every lease,
+provider event, proof item, cleanup record, and attestation.
+
+The handoff checks the old executor's terminal error and saved diagnostic, no
+active attempt or lease, the approved planning and design merge receipts, the
+current DEOS issue and route, the saved patch hash and bytes, and PR #137's
+exact branch and head. It carries the old code onto current `main` with a clean
+tree merge, verifies the resulting tree and single-parent commit, and updates
+the existing branch with an exact old-head precondition. The candidate build
+uses the new commit. The new run starts at the shared test decision with a
+fresh implementation subject; old proof is retained as history and cannot
+satisfy the new run's test or release guard. An immutable handoff record names
+both runs, old and new commit and patch identities, the current base, and the
+source approval receipts. If any readback changes, the handoff stops before
+admission. The new run has its own unique run branch identity and separately
+records the existing PR branch it tests, leaving the source row unchanged. It
+creates no new planning, design, or implementation pull request.
 
 ### D1 owns the lease and write fence
 
@@ -247,10 +383,12 @@ to quiet and cleanup.
 
 ### Staging has one stable release manifest
 
-Each managed staging deploy takes part in the pointer rule. Grant also checks
-real traffic twice. This catches a deploy that did not use the pointer. A host
-name or branch was not used because both can move. A data copy was not used
-because test stores must stay apart.
+The coordinator refreshes the pointer from two matching version reads before
+grant. This catches an observed staging version change without a deployment job
+writing to D1. The returned version is assumed to serve 100% of traffic;
+the API cannot detect a split deployment. A host name or branch was not used
+because both can move. A data copy was not used because test stores must stay
+apart.
 
 ### One ingress routes one exact Linear test event
 
@@ -325,8 +463,8 @@ replaces the first cause. The public page shows only a safe code and state.
 | Record | Key fields | Rule |
 | --- | --- | --- |
 | `test_environment` | state, saved phase, owner run and lease, fence, heartbeat source and due time, cleanup driver, hold, last lease, fault, revision | One row is the site authority. Owned and blocked states keep the owner. |
-| `staging_release_pointer` | state, manifest, traffic revision, work ID, owner, planned manifest, heartbeat due, fault, revision | Grant needs `stable` and two real traffic reads that match. |
-| `staging_release_services` | manifest, service, source commit, deploy version, fixed build input, read time | Fixed full service set for one staging traffic revision. |
+| `staging_release_pointer` | state, manifest, version revision, work ID, owner, planned manifest, heartbeat due, fault, revision | Grant needs `stable` and two version reads that match. |
+| `staging_release_services` | manifest, service, source commit, deploy version, fixed build input, read time | Fixed full service set for one staging version revision. |
 | `test_task_decisions` | run, candidate, patch hash, service map revision, choice, matched roots, time | Fixed path rule result. The release guard uses the same manifest revision. |
 | `test_lease_requests` | request ID, queue number, run, node visit, current attempt, task, candidate, state, validation facts, old attempts, terminal proof, cancel time | Unique for run, visit, task, and candidate. Retry keeps the row and queue place; the scanner cancels only a proved-dead waiter. |
 | `test_leases` | lease, request, run, attempt, task facts, team, stage, state, fence, base, times, GitHub scope, candidate | Fixed owner, task, provider, GitHub, and base scope. |
@@ -355,10 +493,10 @@ milliseconds. No raw secret, auth header, or full private reply is saved.
 | Two requests race or one is sent twice | Save or load one request. Validate only the oldest queue head. | One current and checked head can grant. |
 | A retry has a new agent attempt | Prove the old attempt is final and its Sandbox is gone. Swap the attempt on the same request. | One visit, task, and candidate keeps one queue row. |
 | The oldest waiter dies or is canceled | The scheduled scanner saves terminal run proof and Sandbox absence, then marks that row `canceled`. It does not grant in that transaction. | A later scan may validate the next oldest live waiter. |
-| An older frozen workflow has no demo node | Keep its graph unchanged and reject release of an app candidate without new proof. | Admit a new run under the post-version-17 graph and test the exact candidate there. |
-| Staging changes during grant | `updating` blocks grant. Two traffic reads and the grant transaction bind one stable base. | All services show one unchanged 100% revision. |
-| A direct deploy makes the pointer stale | Mark it for repair and block grant. | Build a new full manifest from two equal real traffic reads. |
-| The staging controller dies | Read actual traffic. Finish the planned manifest, restore the old stable one, or block on mixed state. | Never guess a stable base. |
+| An older frozen workflow has no demo node | Keep its graph unchanged and reject release of an app candidate without new proof. | Admit a new run under the post-version-17 graph. For SAC-182, use the guarded PR #137 handoff above; the new run still has to produce every lease-bound test and cleanup receipt. |
+| Staging changes during grant | `updating` blocks grant. Two version reads and the grant transaction bind one stable base. | All services return one unchanged version revision. |
+| A direct deploy makes the pointer stale | Block grant until coordinator refreshes it. | Build a new full manifest from two equal version reads. |
+| The staging controller dies | Read the running versions. Finish the planned manifest, restore the old stable one, or block if versions change between reads. | Never guess a stable base beyond the explicit 100% assumption. |
 | A test service has the wrong version | Keep writes fenced. Save the fault. Quiet and clean if setup cannot be fixed. | Every service must match, or all owned setup must be gone. |
 | An old app right, cookie, or browser key is used | Reject it before app or store access. Save a safe audit fact. | Current attempt, Access identity, lease session, and fence must all match. |
 | The task leaves the DEOS team | Stop the Linear write. Keep the read and first cause. Do not start live work. | A new trusted read must prove the saved team. |
@@ -391,8 +529,9 @@ milliseconds. No raw secret, auth header, or full private reply is saved.
 
 - **One site makes work wait.** Use a fair queue and safe retry. Do not trade
   clean scope for speed.
-- **The staging pointer adds work to deploys.** Check real traffic at grant, so
-  an out-of-band deploy fails closed.
+- **The staging pointer adds work to grant.** Check versions at grant, so an
+  observed out-of-band version change fails closed. A split rollout that returns
+  the same version on both reads is outside this check by explicit assumption.
 - **A D1 check on each app call adds delay.** Keep the owner row small. Fresh
   fence checks matter more than a fast stale session.
 - **The test mark edits a real task for a short time.** The trusted adapter can
@@ -416,17 +555,19 @@ milliseconds. No raw secret, auth header, or full private reply is saved.
    grant and test event use off.
 3. Register the new immutable workflow version after version 17. Admit only new
    runs to it. Keep the release guard in observe-only mode.
-4. Put all managed staging deploys behind the stable pointer. Seed the first
-   base only after two equal reads of 100% staging traffic.
+4. Refresh the stable pointer in the trusted coordinator. Seed the first base
+   after two equal reads of both staging version endpoints. Staging deploy jobs
+   need no D1 permission for this step.
 5. Add the portal origin, separate lease app origins, test stores, browser
    Access policy, repair route, raw proof route, sanitizer, safe image route,
    and secret refs. Check that no live or staging store is bound.
 6. Run setup, missed-heartbeat recovery, dead-waiter expiry, proof, bounded
    repair, and cleanup without an agent. Check each version, session, browser
    identity, proof item, close receipt, final report, and absence read.
-7. Turn on the safe portal at `test-deos.voxdez.com`. Keep provider writes off
+7. Turn on the safe portal at `deos-test.voxdez.com`. Keep provider writes off
    until the lease, version, origin, session, sanitizer, and event checks pass.
-8. Turn on one lease. Admit new SAC-182 work through the required demo node.
+8. Turn on one lease. Verify and apply the guarded SAC-182 handoff from its
+   stopped run and PR #137 to a newly admitted run, then enter the required demo node.
    Save the real provider event, app use, GitHub result, screen shots, D1 reads,
    cleanup, free state, and final report.
 9. Change the staging and live release guard from observe-only to enforcement

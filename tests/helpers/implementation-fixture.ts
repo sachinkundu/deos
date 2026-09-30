@@ -87,7 +87,9 @@ export class ImplementationTestDatabase {
 
 export class ImplementationTestBucket {
   objects = new Map<string, Uint8Array>();
-  async put(key: string, value: string | Uint8Array) {
+  async put(key: string, value: string | Uint8Array,
+    options?: {onlyIf?:{etagDoesNotMatch?:string}}) {
+    if (options?.onlyIf?.etagDoesNotMatch === '*' && this.objects.has(key)) return null;
     if (!this.objects.has(key))
       this.objects.set(
         key,
@@ -95,7 +97,7 @@ export class ImplementationTestBucket {
           ? new TextEncoder().encode(value)
           : new Uint8Array(value),
       );
-    return {};
+    return {key};
   }
   async get(key: string) {
     const bytes = this.objects.get(key);

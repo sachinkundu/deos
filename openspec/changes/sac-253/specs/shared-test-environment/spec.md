@@ -87,6 +87,29 @@ owned by the leased run. All test records SHALL carry the run and lease IDs.
 The system MUST reject a write to any other task, branch, pull request, app
 store, or run.
 
+BettaView automated test sign-in SHALL use the existing checked test reviewer
+from the frozen provider profile. The trusted coordinator SHALL verify its
+current numeric GitHub identity, exact lease app session, fence, and ready
+disposable fixture before issuing a short-lived opaque session. It MUST repeat
+these checks on each provider request. No new callback setting or credential
+is required for this path. An optional interactive OAuth path SHALL bind
+single-use state and handoffs to the exact active lease and origin.
+
+The candidate Worker MUST NOT receive a GitHub client secret, authorization
+code, or user token. Its own review API logic SHALL run for the exact candidate
+commit, using a trusted transport that checks the live lease fence and saved
+fixture scope. Linked review continuation SHALL execute the candidate's actual
+ReviewContinuation service and DeosWorkflow with test-owned stores. The trusted
+builder SHALL pin their source and bundle hashes; deployment SHALL verify the
+running version twice. Outbound provider transport MAY inject explicitly
+labeled failures but MUST NOT replace review or gate decisions. Real signed
+Linear deliveries SHALL be retained as provider evidence.
+
+The candidate MUST NOT receive the production continuation signing secret or
+a binding that can advance a live workflow. A test review MUST NOT move the
+live Linear issue. A lease-specific service key and fixed-scope provider
+binding SHALL authorize only the disposable test fixture.
+
 #### Scenario: Current team task is admitted
 
 - **WHEN** a trusted Linear read finds the run task in the current DEOS team.
@@ -117,10 +140,25 @@ store, or run.
 - **WHEN** the agent asks to write to a branch or pull request outside the saved lease scope.
 - **THEN** the trusted service rejects the write and records the safe cause.
 
+#### Scenario: Optional GitHub OAuth redirects after a lease changes
+
+- **WHEN** GitHub returns to the fixed callback after the saved lease, fence, app session, or state has expired or changed.
+- **THEN** the coordinator refuses the exchange or handoff and gives no credential to the old app.
+
+#### Scenario: Candidate code requests a GitHub credential
+
+- **WHEN** candidate code calls its GitHub routes or asks for a raw credential.
+- **THEN** the trusted transport permits only lease-scoped provider operations and never returns a provider secret or user token; the candidate's review API logic still runs.
+
+#### Scenario: Candidate publishes a linked review
+
+- **WHEN** the candidate's linked-review route publishes through the lease app.
+- **THEN** the actual candidate service and Workflow record test-owned review state through the scoped provider transport and cannot advance a live workflow or move its Linear issue.
+
 ### Requirement: Show who holds the site
 
 The frontend for the shared test environment SHALL be
-`test-deos.voxdez.com`. It SHALL show a clear test name and the current lease
+`deos-test.voxdez.com`. It SHALL show a clear test name and the current lease
 state. The issue being worked SHALL be the human-readable identity of the agent
 that owns the site. While the lease is held, the page SHALL lead with the issue
 name and key. It SHALL also show the workflow stage, saved staging base, and
@@ -181,10 +219,25 @@ removal, and absence checks all pass.
 - **WHEN** removal fails or read-back cannot prove that run data is absent.
 - **THEN** the lease stays blocked, the first error and its cause stay saved, and no waiting run gets the site.
 
+#### Scenario: Setup fails before the demo
+
+- **WHEN** an isolated lease is fenced before activation and has no app or provider test work.
+- **THEN** the system saves the original fault and a read-back failed-setup note on the scoped pull request, removes only owned setup resources, proves their absence, and records an abort receipt before freeing the site. The abort MUST NOT count as a passed test or release attestation.
+
 #### Scenario: Cleanup sees unrelated data
 
 - **WHEN** cleanup finds data that is not bound to the ending run and lease.
 - **THEN** it leaves that data unchanged and raises a scoped cleanup fault.
+
+#### Scenario: App setup blocks before a review session
+
+- **WHEN** the demo attempt is blocked and its Sandbox is destroyed, with no GitHub session, review fixture, or test attestation, and the operator requests an exact-subject abort.
+- **THEN** the system retains and verifies all original artifacts and captures, reads back a failed-setup PR note, fences writes, settles accepted marker work, and proves owned-resource absence before freeing the site. It creates a failed close receipt and no release attestation.
+
+#### Scenario: A repaired draft follows a failed lease
+
+- **WHEN** the previous lease has a failed close receipt and the operator submits a new exact draft head and hash-pinned artifacts on the same approved base.
+- **THEN** the coordinator verifies the live PR, tree and blob hashes, preserves the old candidate and patch, and requires a fresh lease and full proof for the new commit. The retired commit cannot silently reacquire the site.
 
 ### Requirement: Prove the real flow with stalled SAC-182 work
 
@@ -193,6 +246,17 @@ environment. Its task SHALL meet the team and lease rules. The proof SHALL show
 lease grant, the pinned staging base, the issue identity on the portal, real app
 use, a real GitHub result, a provider-made Linear event received by the test
 Worker, the saved result, cleanup, and the next free state.
+
+The stopped SAC-182 workflow SHALL remain frozen. A guarded handoff MAY create
+a new workflow run from its verified planning and design approvals and the exact
+code in its existing pull request. The handoff MUST verify the stopped executor,
+saved original error, absence of active work, current issue and repository
+scope, source patch, pull request head, and a clean carry-forward of that code
+onto current `main`. It MUST save the source and target identities and MUST NOT
+create replacement planning, design, or implementation pull requests. The new
+run MUST make a fresh test decision for its new candidate commit and MUST earn
+its own lease, proof, cleanup, and release attestation. Old proof MUST NOT count
+for the new candidate.
 
 A signed request made by a local tool straight to the Worker MAY be kept as
 synthetic ingress proof. It MUST NOT count as the provider-made Linear proof.
@@ -203,6 +267,17 @@ setup and the triggering task state, plus command and data read-back proof.
 
 - **WHEN** the stalled SAC-182 work resumes in the current team and gets the lease.
 - **THEN** it uses the pinned real app and scoped provider links, and its pull request keeps the full proof after cleanup.
+
+#### Scenario: Stopped SAC-182 code is handed to a new run
+
+- **GIVEN** the old executor is terminal and its original error and PR #137 code are preserved.
+- **WHEN** the trusted handoff verifies the source receipts and current branch, then carries that exact code onto current `main`.
+- **THEN** a new workflow run tests the new commit through the shared site while the old run and its approvals remain historical records.
+
+#### Scenario: Source or branch changes during handoff
+
+- **WHEN** the source error, approval, patch, branch head, or resulting tree differs from the saved handoff plan.
+- **THEN** no lease is granted and the changed subject is reported for review.
 
 #### Scenario: Only synthetic ingress is shown
 

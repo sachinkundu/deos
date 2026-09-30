@@ -15,4 +15,24 @@ test('version readback is available without a session and contains only deployme
     buildInputSha256:env.BETTAVIEW_BUILD_INPUT_SHA256,versionId:'provider-version'});
   assert.equal((await routeBettaViewRequest(new Request(
     'https://bettaview-staging.voxdez.com/api/version',{method:'POST'}),env,denied)).status,405);
+  const lease=await routeBettaViewRequest(
+    new Request('https://test.apps.deos-test.voxdez.com/api/version'),
+    {...env,TEST_BASE_VERSION_ID:'11111111-1111-4111-8111-111111111111'},denied);
+  assert.equal((await lease.json()).baseVersionId,'11111111-1111-4111-8111-111111111111');
+});
+
+test('lease BettaView needs the edge gate and blocks direct provider writes',async()=>{
+  const env={BETTAVIEW_SITE:'Test',ASSETS:{fetch:async()=>new Response('test page')}};
+  const url='https://bettaview-test.apps.deos-test.voxdez.com/';
+  const denied=async()=>{throw new Error('unauthorized');};
+  assert.equal((await routeBettaViewRequest(new Request(url),env,denied)).status,401);
+  const page=await routeBettaViewRequest(new Request(url,{headers:{
+    'X-Deos-Test-Gate':'verified'}}),env,denied);
+  assert.equal(page.status,200);
+  assert.equal(await page.text(),'test page');
+  const write=await routeBettaViewRequest(new Request(url+'api/comments/reply',{
+    method:'POST',headers:{'X-Deos-Test-Gate':'verified'}}),env,denied);
+  assert.equal(write.status,403);
+  assert.deepEqual(await write.json(),{
+    error:'test_provider_write_requires_trusted_adapter'});
 });

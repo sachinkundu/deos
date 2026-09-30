@@ -40,6 +40,7 @@ export const implementationPolicy: ImplementationPolicy = {
   ],
   providerPaths: [
     "src/deos/ingress.py",
+    "src/deos/",
     "src/deos/worker.py",
     "src/entry.py",
     "src/linear-",

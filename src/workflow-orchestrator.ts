@@ -248,6 +248,19 @@ export class WorkflowOrchestrator {
             instruction.action,
           ),
         );
+        if (instruction.nodeId === 'shared_test_demo' && outcome.outcome === 'waiting') {
+          try {
+            await step.waitForEvent(
+              `shared-test-tick:visit:${run.current_visit_sequence}`,
+              {type:'shared-test-tick',timeout:'30s'},
+            );
+          } catch (caughtError) {
+            if (!isWorkflowEventTimeout(caughtError)) {
+              recordCaughtError(caughtError,'src/workflow-orchestrator.ts:shared_test_demo');
+              throw caughtError;
+            }
+          }
+        }
         const decision = this.evaluateExecutionOutcome(instruction.nodeId, outcome);
         await step.do(
           `transition:${instruction.nodeId}:${decision.outcome}:visit:${run.current_visit_sequence}`,
@@ -284,10 +297,19 @@ export class WorkflowOrchestrator {
         run.status = "awaiting_human";
       }
 
-      const event = deferredReviews.shift() ?? await step.waitForEvent<WorkflowWake>(
-        `linear-event:${instruction.nodeId}:visit:${run.current_visit_sequence}`,
-        { type: "linear-event", timeout: "24h" },
-      );
+      let event: { payload: Readonly<WorkflowWake> };
+      try {
+        event = deferredReviews.shift() ?? await step.waitForEvent<WorkflowWake>(
+          `linear-event:${instruction.nodeId}:visit:${run.current_visit_sequence}`,
+          { type: "linear-event", timeout: "24h" },
+        );
+      } catch (caughtError) {
+        if (!isWorkflowEventTimeout(caughtError)) {
+          recordCaughtError(caughtError, "src/workflow-orchestrator.ts:human_gate_wait");
+          throw caughtError;
+        }
+        continue;
+      }
       if (isReviewWake(event)) {
         if (!this.services.continueBettaViewReview) throw new Error("BettaView review continuation service is unavailable");
         await step.do(`continue-review:${event.payload.reviewId}:attempt:${event.payload.attempt ?? 1}:visit:${run.current_visit_sequence}`, () =>
@@ -423,10 +445,19 @@ export class WorkflowOrchestrator {
     operation: HumanGateOperation,
     deferredReviews: { payload: Readonly<ReviewWake> }[],
   ): Promise<boolean> {
-    const event = await step.waitForEvent<WorkflowWake>(
-      `linear-operation:${operation.providerOperationId}`,
-      { type: "linear-event", timeout: "24h" },
-    );
+    let event: { payload: Readonly<WorkflowWake> };
+    try {
+      event = await step.waitForEvent<WorkflowWake>(
+        `linear-operation:${operation.providerOperationId}`,
+        { type: "linear-event", timeout: "24h" },
+      );
+    } catch (caughtError) {
+      if (!isWorkflowEventTimeout(caughtError)) {
+        recordCaughtError(caughtError, "src/workflow-orchestrator.ts:human_gate_operation_wait");
+        throw caughtError;
+      }
+      return false;
+    }
     if (isReviewWake(event)) {
       deferredReviews.push(event);
       return false;

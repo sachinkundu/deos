@@ -1,0 +1,18 @@
+[
+  {
+    "scriptName": "deos-queue-consumer-ts",
+    "scriptVersion": {
+      "id": "43216684-d93b-485b-bac0-b756e320c7eb"
+    },
+    "eventTimestamp": 1790750361089,
+    "outcome": "exception",
+    "exceptions": [
+      {
+        "stack": "    at checkEffects (queue-consumer.js:77788:17)\n    at async settleUnpublishedReview (queue-consumer.js:77822:17)\n    at async closeBlockedSharedTestDemo (queue-consumer.js:77983:57)\n    at async queue-consumer.js:145:16",
+        "name": "Error",
+        "message": "test_unpublished_restoration_scope_changed",
+        "timestamp": 1790750377703
+      }
+    ]
+  }
+]

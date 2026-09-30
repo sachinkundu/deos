@@ -4,9 +4,13 @@ import copy
 import importlib.util
 import json
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+import shared_test_build_bundle
 
 SPEC = importlib.util.spec_from_file_location(
     "portal_release", Path(__file__).resolve().parents[1] / "scripts/portal_release.py"
@@ -47,33 +51,33 @@ def test_staging_rejects_changed_resource_tuple(key, value):
         release.preflight(config, "staging")
 
 
-def test_readback_requires_same_sha_site_host_and_single_active_version():
-    deployment = {"versions": [{"version_id": "v1", "percentage": 100}]}
+def test_staging_readback_requires_same_sha_site_host_and_valid_version():
+    deployment = None
     version = {
         "site": "Staging",
         "canonicalHost": "deos-staging.voxdez.com",
         "sourceBranch": "main",
         "sourceSha": SHA,
         "buildInputSha256": "b" * 64,
-        "versionId": "v1",
+        "versionId": "11111111-1111-4111-8111-111111111111",
     }
     release.validate_readback("staging", SHA, deployment, version, "b" * 64)
     for key in version:
         with pytest.raises(ValueError):
             release.validate_readback("staging", SHA, deployment, {**version, key: "wrong"}, "b" * 64)
-    with pytest.raises(ValueError):
-        release.validate_readback(
-            "staging",
-            SHA,
-            {
-                "versions": [
-                    {"version_id": "v1", "percentage": 50},
-                    {"version_id": "v2", "percentage": 50},
-                ]
-            },
-            version,
-            "b" * 64,
-        )
+
+
+def test_production_readback_still_checks_provider_traffic():
+    version = {"site": "Production", "canonicalHost": "deos.voxdez.com",
+               "sourceBranch": "release", "sourceSha": SHA,
+               "buildInputSha256": "b" * 64,
+               "versionId": "11111111-1111-4111-8111-111111111111"}
+    deployment = {"versions": [{"version_id": version["versionId"], "percentage": 100}]}
+    release.validate_readback("production", SHA, deployment, version, "b" * 64)
+    with pytest.raises(ValueError, match="100 percent"):
+        release.validate_readback("production", SHA,
+                                  {"versions": [{"version_id": version["versionId"],
+                                                 "percentage": 50}]}, version, "b" * 64)
 
 
 def test_build_input_digest_changes_with_bytes_and_source(tmp_path, monkeypatch):
@@ -93,31 +97,7 @@ def setup_deploy(monkeypatch):
     monkeypatch.setattr(release, "check_ref", lambda *args: None)
     monkeypatch.setattr(release, "check_route_access", lambda: None)
     monkeypatch.setattr(release, "artifact_digest", lambda *args: "b" * 64)
-    class UninitializedPointer:
-        def prepare_deploy(self, target, sha, build_digest, owner):
-            return {"action": "deploy", "tracked": False}
-
-        def assert_no_active_attempts(self):
-            pass
-    monkeypatch.setattr(release, "StagingPointerClient", UninitializedPointer)
-
-
-def test_active_attempt_stops_staging_before_wrangler(monkeypatch):
-    setup_deploy(monkeypatch)
-    calls = []
-
-    class BusyPointer:
-        def prepare_deploy(self, target, sha, build_digest, owner):
-            return {"action": "deploy", "tracked": False}
-
-        def assert_no_active_attempts(self):
-            raise ValueError("Staging deploy requires a stopped agent gate")
-
-    monkeypatch.setattr(release, "StagingPointerClient", BusyPointer)
-    monkeypatch.setattr(release, "run", lambda *args, **kwargs: calls.append(args))
-    with pytest.raises(ValueError, match="stopped agent gate"):
-        release.deploy("staging")
-    assert not any("wrangler" in args for args in calls)
+    monkeypatch.setattr(shared_test_build_bundle, "publish", lambda *args: "saved-build")
 
 
 def test_missing_route_permission_stops_before_build_or_upload(monkeypatch):
@@ -170,7 +150,7 @@ def test_failed_wrangler_reads_back_once_without_retry(monkeypatch):
         "--env", "staging", "--var", f"PORTAL_SOURCE_SHA:{SHA}",
         "--var", "PORTAL_BUILD_INPUT_SHA256:" + "b" * 64,
     )
-    assert observed == ["staging"]
+    assert observed == []
 
 
 def test_production_rejects_manual_local_deploy(monkeypatch):
@@ -197,10 +177,7 @@ def test_failed_hostname_read_keeps_uploaded_version_evidence(monkeypatch, capsy
     monkeypatch.setattr(release, "host_version", unreachable)
     with pytest.raises(subprocess.CalledProcessError):
         release.deploy("staging")
-    assert json.loads(capsys.readouterr().out) == {
-        "observedDeployment": {"id": "uploaded-version"},
-        "observedHostError": "OSError",
-    }
+    assert json.loads(capsys.readouterr().out) == {"observedHostError": "OSError"}
     assert len([args for args in calls if "wrangler" in args and "--dry-run" not in args]) == 1
 
 

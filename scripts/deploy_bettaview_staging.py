@@ -2,8 +2,8 @@
 
 import json
 import os
+import re
 import urllib.request
-import uuid
 
 from portal_release import (
     ACCOUNT,
@@ -15,8 +15,10 @@ from portal_release import (
     clean_checkout,
     run,
 )
+from shared_test_build_bundle import publish as publish_test_build
 from shared_test_release_guard import guard as shared_test_release_guard
-from shared_test_staging_pointer import StagingPointerClient, run_with_heartbeat
+from shared_test_worker_module import build as build_test_worker_module
+from shared_test_worker_module import publish as publish_test_worker_module
 
 WORKER = "deos-bettaview-portal-staging"
 HOST = "bettaview-staging.voxdez.com"
@@ -29,7 +31,11 @@ def preflight(config):
         "routes": [{"pattern": HOST, "custom_domain": True}],
         "workers_dev": False,
         "preview_urls": False,
-        "services": [{"binding": "DEOS_PORTAL", "service": "deos-workflow-portal-staging"}],
+        "services": [
+            {"binding": "DEOS_REVIEW_CONTINUATION", "service": "deos-queue-consumer-ts",
+             "entrypoint": "ReviewContinuation"},
+            {"binding": "DEOS_PORTAL", "service": "deos-workflow-portal-staging"},
+        ],
         "version_metadata": {"binding": "CF_VERSION_METADATA"},
     }
     if config.get("account_id") != ACCOUNT or config.get("main") != "worker/index.js":
@@ -45,21 +51,6 @@ def preflight(config):
         raise ValueError("BettaView staging cannot bind live data stores")
 
 
-def deployment():
-    request = urllib.request.Request(
-        f"https://api.cloudflare.com/client/v4/accounts/{ACCOUNT}/workers/scripts/{WORKER}/deployments",
-        headers={"Authorization": "Bearer " + os.environ["CLOUDFLARE_API_TOKEN"]},
-    )
-    with urllib.request.urlopen(request, timeout=30) as response:
-        payload = json.load(response)
-    if payload.get("success") is not True:
-        raise ValueError("BettaView staging deployment read failed")
-    rows = payload.get("result", {}).get("deployments", [])
-    if not rows:
-        raise ValueError("BettaView staging has no deployment")
-    return max(rows, key=lambda row: row["created_on"])
-
-
 def host_version():
     request = urllib.request.Request(
         f"https://{HOST}/api/version",
@@ -71,18 +62,18 @@ def host_version():
         return json.load(response)
 
 
-def validate_readback(sha, build_digest, deployed, host):
-    versions = deployed.get("versions", [])
-    if len(versions) != 1 or versions[0].get("percentage") != 100:
-        raise ValueError("BettaView staging does not have one version at full traffic")
+def validate_readback(sha, build_digest, host):
+    if re.fullmatch(r"[a-fA-F0-9]{8}(?:-[a-fA-F0-9]{4}){3}-[a-fA-F0-9]{12}",
+                    host.get("versionId", "")) is None:
+        raise ValueError("BettaView staging version response is invalid")
     expected = {
         "canonicalHost": HOST,
         "sourceSha": sha,
         "buildInputSha256": build_digest,
-        "versionId": versions[0]["version_id"],
+        "versionId": host["versionId"],
     }
     if host != expected:
-        raise ValueError("BettaView staging host differs from the deployed version")
+        raise ValueError("BettaView staging host differs from the selected build")
 
 
 def deploy():
@@ -99,31 +90,23 @@ def deploy():
     run("npm", "run", "bettaview:build")
     run("npm", "--prefix", "portal/bettaview", "test")
     built = ROOT / "portal/bettaview/dist"
-    digest = artifact_digest(sha, [ROOT / "portal/bettaview/worker/index.js",
-                                   *(path for path in built.rglob("*") if path.is_file())])
+    build_files = [*sorted((ROOT / "portal/bettaview/worker").glob("*.js")),
+                   *(path for path in built.rglob("*") if path.is_file())]
+    digest = artifact_digest(sha, build_files)
     if clean_checkout() != sha:
         raise ValueError("BettaView build changed the source checkout")
     check_ref("staging", sha)
-    pointer = StagingPointerClient()
-    pointer.assert_no_active_attempts()
-    owner = "bettaview-staging-deploy:" + str(uuid.uuid4())
-    plan = pointer.prepare_deploy("bettaview", sha, digest, owner)
+    publish_test_build("bettaview", sha, build_files, digest)
+    module, receipt = build_test_worker_module(ROOT, sha, digest)
+    publish_test_worker_module(module, receipt)
     args = ("npx", "--no-install", "wrangler", "deploy", "--config",
             "portal/bettaview/wrangler.jsonc", "--env", "staging",
             "--var", f"BETTAVIEW_SOURCE_SHA:{sha}",
             "--var", f"BETTAVIEW_BUILD_INPUT_SHA256:{digest}")
-    if plan["action"] == "deploy":
-        pointer.assert_no_active_attempts()
-        if plan["tracked"]:
-            run_with_heartbeat(args, ROOT, pointer, plan["work_id"], owner)
-        else:
-            run(*args)
-    deployed, host = deployment(), host_version()
-    validate_readback(sha, digest, deployed, host)
-    if plan["action"] == "deploy" and plan["tracked"]:
-        pointer.finish(plan["work_id"], plan["manifest_id"], owner)
-    print(json.dumps({"deploymentId": deployed["id"], "pointerAction": plan["action"],
-                      **host}, indent=2))
+    run(*args)
+    host = host_version()
+    validate_readback(sha, digest, host)
+    print(json.dumps(host, indent=2))
 
 
 if __name__ == "__main__":

@@ -75,3 +75,5 @@
 ## 9. Staged rollout and behavior proof (split)
 
 The deployment, feature-enablement, live D1 read-back, and production rollback checklist has been split out of this implementation. It must be proposed and approved as a separate trusted post-merge OpenSpec change before any live action. This implementation attempt performs only local preview and isolated safe-resource proof.
+
+On 30 September 2026, the owner accepted the normal path and then explicitly asked to merge the work, update staging, and release to production. That later instruction authorizes this release. The [release record](../../../docs/evidence/sac-253/release-2026-09-30.md) tracks the combined checks, required human secret setup, and rollout. The deferred fault and second-user checks remain unverified.

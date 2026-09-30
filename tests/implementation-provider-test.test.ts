@@ -51,7 +51,7 @@ async function fixture() {
   const call = (value: Record<string, unknown>, attempt = "one") => provider.call("run-1", attempt, [binding], {
     action: "safe_test", resourceId: resource.resource_id, subject, ...value,
   });
-  return { db, store, provider, resource, owned, binding, calls, fetcher, call, loseMove: () => { loseMove = true; } };
+  return { db, env, store, provider, resource, owned, binding, calls, fetcher, call, loseMove: () => { loseMove = true; } };
 }
 
 test("provider tests reject a different resource, person, repository path or issue before any write", async () => {
@@ -94,4 +94,94 @@ test("provider proof requires the exact signed actor/state transition and curren
     const evidence = await f.call(proof); assert.equal("providerDeliveryId" in evidence && evidence.providerDeliveryId, "delivery");
     await assert.rejects(f.call({ ...proof, subject: { ...subject, treeSha: "f".repeat(40) } }), /subject_changed/);
   } finally { globalThis.fetch = original; f.db.close(); }
+});
+
+test('event evidence requires an exact signed payload receipt and separately checks the app actor',async()=>{
+  const f=await fixture();
+  try {
+    f.db.sqlite.prepare("INSERT INTO deliveries (delivery_id,payload_hash,received_at,classification) VALUES ('delivery',?,'2099-01-01T00:00:00Z','relevant')").run('b'.repeat(64));
+    f.db.sqlite.prepare("INSERT INTO implementation_test_events VALUES ('delivery',?,'test-issue','app','review','work','2099-01-01',?,'2099-01-01T00:00:00Z')")
+      .run(f.resource.resource_id,'a'.repeat(64));
+    const read=async()=>((await f.call({operation:'events'})) as {events:Array<Record<string,unknown>>}).events[0]!;
+    assert.equal((await read()).signature_verified,0);
+    f.db.sqlite.prepare("UPDATE deliveries SET payload_hash=? WHERE delivery_id='delivery'").run('a'.repeat(64));
+    assert.equal((await read()).signature_verified,1);assert.equal((await read()).app_actor_matches,1);
+    f.db.sqlite.prepare("UPDATE implementation_test_events SET actor_id='other'").run();
+    assert.equal((await read()).signature_verified,1);assert.equal((await read()).app_actor_matches,0);
+  } finally {f.db.close();}
+});
+
+test('a lease head advance persists the checked head for later scenario reads and is not repeated',async()=>{
+  const f=await fixture(),original=globalThis.fetch,leaseId='a'.repeat(64),next='e'.repeat(40);
+  let remoteHead=f.owned.head,updates=0;
+  f.db.sqlite.prepare(`INSERT INTO test_lease_requests
+    (request_id,run_id,node_visit,attempt_id,task_id,candidate_commit,patch_sha256,state,created_at,updated_at)
+    VALUES ('request','run-1',1,'one','issue-1',?,?,'granted','now','now')`).run(subject.treeSha,'c'.repeat(64));
+  f.db.sqlite.prepare(`INSERT INTO test_leases
+    (lease_id,request_id,run_id,attempt_id,task_id,task_key,task_title,team_id,stage,state,fence,
+     base_manifest_id,base_traffic_revision,base_json,repository,branch,pull_request_number,candidate_commit,patch_sha256,created_at)
+    VALUES (?,'request','run-1','one','issue-1','SAC-182','Review','team','shared_test_demo','active',1,
+      'base','base','{}','owner/real','candidate',137,?,?,'now')`).run(leaseId,subject.treeSha,'c'.repeat(64));
+  f.db.sqlite.prepare(`INSERT INTO test_review_fixtures
+    (resource_id,run_id,attempt_id,lease_id,kind,slot_id,allocation_op,provider,provider_resource_id,
+     status,metadata_json,created_at,updated_at)
+    VALUES (?,'run-1','one',?,'safe_test',?,?,'github-linear-review-v1','test-issue','ready',?,'now','now')`)
+    .run(f.resource.resource_id,leaseId,f.resource.resource_id,'allocate',JSON.stringify(f.owned));
+  globalThis.fetch=async(input,init)=>{
+    const path=new URL(String(input)).pathname;
+    if(path.endsWith('/git/ref/heads/deos/canary/one'))return Response.json({object:{sha:remoteHead}});
+    if(path.endsWith('/git/commits/'+f.owned.head))return Response.json({tree:{sha:'t'.repeat(40)}});
+    if(path.endsWith('/git/trees'))return Response.json({sha:'f'.repeat(40)});
+    if(path.endsWith('/git/commits'))return Response.json({sha:next});
+    if(path.endsWith('/git/refs/heads/deos/canary/one')){updates++;remoteHead=next;return Response.json({object:{sha:next}});}
+    return f.fetcher(input,init);
+  };
+  try {
+    const provider=new ImplementationProviderTest(f.env,async()=>{},leaseId);
+    const input={operation:'github.advance_fixture_head',operationId:'s09-advance',resourceId:f.resource.resource_id};
+    const result=await provider.call('run-1','one',[f.binding],input);
+    assert.deepEqual(result,{response:{previousHead:f.owned.head,head:next,fixtureInput:true}});
+    const saved=await provider.fixture('run-1','one',[f.binding]);
+    assert.equal(saved.fixture.head,next);
+    assert.deepEqual(saved.fixture.heads,[f.owned.head,next]);
+    assert.deepEqual(await provider.call('run-1','one',[f.binding],input),result);
+    assert.equal(updates,1);
+  } finally {globalThis.fetch=original;f.db.close();}
+});
+
+test('cleanup closes both owned fixture pulls and checks that neither branch reappears',async()=>{
+  const f=await fixture(),original=globalThis.fetch;
+  const extra={branch:f.owned.branch+'-unlinked',head:f.owned.head,pullNumber:13,pullUrl:'https://github.test/owner/test-repo/pull/13'};
+  const branches=new Map([[f.owned.branch,f.owned.head],[extra.branch,extra.head]]);
+  const pulls=new Map([12,13].map(number=>[number,{number,state:'open',merged:false,
+    base:{repo:{full_name:profile.repository}},head:{sha:f.owned.head,ref:number===12?f.owned.branch:extra.branch}}]));
+  f.db.sqlite.prepare('UPDATE implementation_resources SET metadata_json=? WHERE resource_id=?')
+    .run(JSON.stringify({...f.owned,unlinkedPull:extra}),f.resource.resource_id);
+  globalThis.fetch=async(input,init)=>{
+    const path=new URL(String(input)).pathname;
+    const pull=path.match(/\/pulls\/(12|13)$/);
+    if(pull) {
+      const row=pulls.get(Number(pull[1]))!;
+      if(init?.method==='PATCH')row.state=JSON.parse(String(init.body)).state;
+      return Response.json(row);
+    }
+    const ref=path.match(/\/git\/refs?\/heads\/(deos\/canary\/one(?:-unlinked)?)$/);
+    if(ref) {
+      if(init?.method==='DELETE'){branches.delete(ref[1]);return new Response(null,{status:204});}
+      return branches.has(ref[1])?Response.json({object:{sha:branches.get(ref[1])}}):Response.json({message:'Not Found'},{status:404});
+    }
+    return f.fetcher(input,init);
+  };
+  try {
+    const cleanup=new ImplementationProviderTest(f.env,async()=>{});
+    await cleanup.cleanup((await f.store.resource('one','safe_test'))!);
+    assert.equal(branches.size,0);assert.ok([...pulls.values()].every(p=>p.state==='closed'));
+    const saved=(await f.store.resource('one','safe_test'))!;
+    assert.equal(saved.status,'destroyed');
+    const receipt=f.db.sqlite.prepare('SELECT cleanup_receipt FROM implementation_resources WHERE resource_id=?').get(saved.resource_id)!;
+    assert.equal(JSON.parse(String(receipt.cleanup_receipt)).unlinkedPullClosed,13);
+    await cleanup.cleanup(saved);
+    branches.set(extra.branch,extra.head);
+    await assert.rejects(cleanup.cleanup(saved),/unlinked_reappeared/);
+  } finally {globalThis.fetch=original;f.db.close();}
 });

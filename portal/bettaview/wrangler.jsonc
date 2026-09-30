@@ -52,6 +52,10 @@
         "GITHUB_CLIENT_ID": "Iv23likxukpheraNrZlx"
       },
       "services": [{
+        "binding": "DEOS_REVIEW_CONTINUATION",
+        "service": "deos-queue-consumer-ts",
+        "entrypoint": "ReviewContinuation"
+      }, {
         "binding": "DEOS_PORTAL",
         "service": "deos-workflow-portal-staging"
       }],

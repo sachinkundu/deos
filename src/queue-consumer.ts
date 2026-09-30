@@ -1,4 +1,20 @@
 import { reconcileImplementations } from "./implementation-reconciliation.ts";
+import {processSharedTestBatch} from './shared-test-queue.ts';
+import {scanSharedTest} from './shared-test-scanner.ts';
+import {SharedTestRepairController} from './shared-test-repair-controller.ts';
+import {closeBlockedSharedTestDemo} from './shared-test-blocked-demo.ts';
+import {collectStoppedSharedTestDemo} from './shared-test-stopped-demo.ts';
+import {retryBlockedSharedTestSetup} from './shared-test-setup-retry.ts';
+import {importSharedTestLinearCapture} from './shared-test-operator-capture.ts';
+import {repairSharedTestCandidate} from './shared-test-candidate-repair.ts';
+import {SharedTestMarkerAction} from './shared-test-marker-action.ts';
+import {SharedTestBrowserAction} from './shared-test-browser-action.ts';
+import {SharedTestReviewScenarios} from './shared-test-review-scenarios.ts';
+import {refreshSharedTestStaging} from './shared-test-staging-refresh.ts';
+import {projectSharedTestImage} from './shared-test-proof-project.ts';
+import {SharedTestLeaseStore} from './shared-test-lease.ts';
+import {probeSharedTestAccess} from './shared-test-access-probe.ts';
+import {SharedTestGitHubBroker} from './shared-test-github-broker.ts';
 import { reconcileWorkflowEvents } from './workflow-event-reconciliation.ts';
 import { BoundedReviewReconciliationController } from './bounded-review-reconciliation.ts';
 import { IndependentReviewReconciliationController } from './independent-review-reconciliation.ts';
@@ -11,6 +27,7 @@ import { CapabilityRouter } from "./capability-router.ts";
 import { verifyCapabilityToken } from "./capability-auth.ts";
 import { captureWorkflowErrors } from "./error-context.ts";
 import { ImplementationHandoffController } from "./implementation-handoff.ts";
+import {SharedTestRunHandoff} from './shared-test-run-handoff.ts';
 import { ImplementationHostedPreview } from './implementation-hosted-preview.ts';
 import { ImplementationDemoUpgradeController } from './implementation-demo-upgrade.ts';
 import { ImplementationProviderTest, type ReviewTestProfile } from "./implementation-provider-test.ts";
@@ -50,9 +67,22 @@ export { ContainerProxy } from "@cloudflare/sandbox";
 export { ImplementationSandbox, ImplementationStandard2Sandbox } from "./sandbox-platform.ts";
 export { RouteAdmin } from "./route-admin-entrypoint.ts";
 export { ReviewContinuation } from "./review-continuation-entrypoint.ts";
+export { SharedTestAppGate } from './shared-test-app-gate-entrypoint.ts';
+export { SharedTestMarkerResolver } from './shared-test-marker-resolver-entrypoint.ts';
+export { SharedTestGitHubBrokerEntrypoint } from './shared-test-github-broker-entrypoint.ts';
+export { SharedTestReviewProvider } from './shared-test-review-provider-entrypoint.ts';
 
 const capabilityRouter = (env: Env): CapabilityRouter => new CapabilityRouter({
   implementation: new ImplementationBroker(env),
+  sharedTestBrowser:new SharedTestBrowserAction(env),
+  sharedTestReview:new SharedTestReviewScenarios(env),
+  sharedTestLeaseWrite:(runId,attemptId,leaseId,fence)=>
+    new SharedTestLeaseStore(env.DB).assertWrite(runId,attemptId,leaseId,fence),
+  ...((env as Env & {TEST_MARKER_KEY_V1?:string}).TEST_MARKER_KEY_V1 ? {
+    sharedTestMarker:new SharedTestMarkerAction(env.DB,
+      new LinearCapabilityAdapter(env.LINEAR_API_URL,env.LINEAR_APP_ACCESS_TOKEN),
+      (env as Env & {TEST_MARKER_KEY_V1:string}).TEST_MARKER_KEY_V1),
+  } : {}),
   completion: new AttemptCompletionNotifier(env.DB,
     env.ORCHESTRATION_WORKFLOW as unknown as QueueConsumerEnv["ORCHESTRATION_WORKFLOW"]),
   claude: claudeRunner(env),
@@ -149,6 +179,31 @@ const workflowRuntimeRecoveryController = (env: Env): WorkflowRuntimeRecoveryCon
 export default {
   async fetch(request, env) {
     const path = new URL(request.url).pathname;
+    if (path === '/shared-test/staging-refresh')
+      return refreshSharedTestStaging(request,env);
+    if (path === '/shared-test/access-probe')
+      return probeSharedTestAccess(request,env);
+    if (path === '/shared-test/github/callback')
+      return new SharedTestGitHubBroker(env).callback(request);
+    if (path === '/shared-test/proof-project')
+      return projectSharedTestImage(request,env);
+    if (path === '/shared-test/linear-capture')
+      return captureWorkflowErrors(env.DB,env.ARTIFACTS,
+        request.headers.get('X-Test-Run-Id')??'shared-test-capture',path,()=>importSharedTestLinearCapture(request,env));
+    if (path === '/shared-test/stopped-demo-collect' || path === '/shared-test/blocked-demo-close' || path === '/shared-test/candidate-repair' ||
+      path === '/shared-test/setup-retry') {
+      if (!env.STAGE_RETRY_SECRET || request.headers.get('Authorization') !== `Bearer ${env.STAGE_RETRY_SECRET}`)
+        return Response.json({error:'invalid_operator_capability'},{status:401});
+      const body=await request.clone().json() as {runId?:unknown};
+      if(typeof body?.runId!=='string')return Response.json({error:'invalid_test_recovery_subject'},{status:400});
+      return captureWorkflowErrors(env.DB,env.ARTIFACTS,body.runId,path,()=>
+        path==='/shared-test/stopped-demo-collect'?collectStoppedSharedTestDemo(request,env)
+          :path==='/shared-test/blocked-demo-close'?closeBlockedSharedTestDemo(request,env)
+          :path==='/shared-test/setup-retry'?retryBlockedSharedTestSetup(request,env)
+          :repairSharedTestCandidate(request,env));
+    }
+    if (path.startsWith('/internal/test-repairs/'))
+      return new SharedTestRepairController(env).handle(request);
     if (path === "/cleanup-audit") return cleanupAuditor(env).handle(request);
     if (path === "/cleanup-attempts") return cleanupAuditor(env).handleDestroy(request);
     if (path === "/stage-retries") return (await stageRetryController(env)).handle(request);
@@ -165,17 +220,22 @@ export default {
     if (path === "/workflow-runtime-recoveries") {
       return workflowRuntimeRecoveryController(env).handle(request);
     }
-    if (path === "/implementation-handoffs" || path === '/implementation-demo-upgrades') {
+    if (path === "/implementation-handoffs" || path === '/implementation-demo-upgrades' ||
+        path === '/shared-test-run-handoffs') {
       if (!env.STAGE_RETRY_SECRET || request.headers.get("Authorization") !== `Bearer ${env.STAGE_RETRY_SECRET}`)
         return Response.json({ error: "invalid_operator_capability" }, { status: 401 });
-      const body = await request.clone().json() as { runId?: unknown };
-      if (typeof body?.runId !== "string") return Response.json({ error: "invalid_handoff_request" }, { status: 400 });
+      const body = await request.clone().json() as { runId?: unknown; sourceRunId?: unknown };
+      const diagnosticRunId=path==='/shared-test-run-handoffs'?body?.sourceRunId:body?.runId;
+      if (typeof diagnosticRunId !== "string")
+        return Response.json({ error: "invalid_handoff_request" }, { status: 400 });
       const definition = (await loadBundledWorkflowDefinitionRegistry()).implementation;
       if (!definition) throw new Error("Implementation definition is unavailable");
-      return captureWorkflowErrors(env.DB, env.ARTIFACTS, body.runId, path,
+      return captureWorkflowErrors(env.DB, env.ARTIFACTS, diagnosticRunId, path,
         () => path === '/implementation-demo-upgrades'
           ? new ImplementationDemoUpgradeController(env, definition).handle(request)
-          : new ImplementationHandoffController(env, definition).handle(request));
+          : path === '/shared-test-run-handoffs'
+            ? new SharedTestRunHandoff(env, definition).handle(request)
+            : new ImplementationHandoffController(env, definition).handle(request));
     }
     if (path === '/implementation-hosted-previews') {
       if (request.method !== 'POST') return Response.json({error:'method_not_allowed'}, {status:405});
@@ -207,12 +267,18 @@ export default {
       () => capabilityRouter(env).handle(request));
   },
   queue(batch, env) {
+    if (batch.queue === 'deos-shared-test-events')
+      return processSharedTestBatch(batch as MessageBatch<unknown>,env.DB);
     return processQueueBatch(
       batch as MessageBatch<QueueBody>,
       env as unknown as QueueConsumerEnv,
     );
   },
-  async scheduled(_controller, env) {
+  async scheduled(controller, env) {
+    if (controller.cron === '* * * * *') {
+      await scanSharedTest(env);
+      return;
+    }
     await expireOverdueReviewDeliveries(env.DB);
     await registerBundledWorkflowDefinitions(env as unknown as QueueConsumerEnv);
     await reconcileWorkflowEvents(env);

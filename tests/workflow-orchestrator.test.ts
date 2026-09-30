@@ -508,7 +508,7 @@ class NodeServices implements WorkflowNodeServices {
     });
   }
 
-  ensureHumanGate() {
+  ensureHumanGate(): ReturnType<WorkflowNodeServices["ensureHumanGate"]> {
     this.gateEntries += 1;
     return Promise.resolve({ providerOperationId: "gate-operation", state: "confirmed" as const });
   }
@@ -627,6 +627,54 @@ test("a buffered completion hint cannot approve a human gate", async () => {
   assert.equal(store.transitions[2].actor_type, "user");
   assert.equal(step.names.some(name => name.includes("undefined") || name.includes("old-attempt")), false);
   assert.equal(services.gateEntries, 1);
+});
+
+test("a 24-hour human gate checkpoint keeps the same gate open for a later reply", async () => {
+  const store = new RuntimeStore();
+  const services = new NodeServices();
+  store.inbox.set("delivery-human", inboxEvent("delivery-human", "user"));
+  let waits = 0;
+  const step: WorkflowStepLike = {
+    do: async (_name, callback) => callback(),
+    waitForEvent: async <T>(_name: string, options: { type: string; timeout?: string | number }) => {
+      assert.equal(options.timeout, "24h");
+      if (waits++ === 0) throw Object.assign(new Error("Execution timed out after 86400000ms"), {
+        name: "WorkflowTimeoutError",
+      });
+      return { payload: { deliveryId: "delivery-human" } as T };
+    },
+  };
+  const result = await orchestrator(store, services).run(store.run.run_id, step);
+  assert.equal(result.outcome, "succeeded");
+  assert.equal(waits, 2);
+  assert.equal(services.gateEntries, 1);
+  assert.equal(store.transitions.filter((row) => row.from_node === "approval").length, 1);
+});
+
+test("a 24-hour gate publication checkpoint retries before opening the gate", async () => {
+  const store = new RuntimeStore();
+  const services = new NodeServices();
+  store.inbox.set("delivery-human", inboxEvent("delivery-human", "user"));
+  let publicationCalls = 0;
+  services.ensureHumanGate = async () => ({
+    providerOperationId: "gate-operation",
+    state: publicationCalls++ === 0 ? "awaiting_delivery" : "confirmed",
+  });
+  let waits = 0;
+  const step: WorkflowStepLike = {
+    do: async (_name, callback) => callback(),
+    waitForEvent: async <T>(_name: string, options: { type: string; timeout?: string | number }) => {
+      assert.equal(options.timeout, "24h");
+      if (waits++ === 0) throw Object.assign(new Error("Execution timed out after 86400000ms"), {
+        name: "WorkflowTimeoutError",
+      });
+      return { payload: { deliveryId: "delivery-human" } as T };
+    },
+  };
+  const result = await orchestrator(store, services).run(store.run.run_id, step);
+  assert.equal(result.outcome, "succeeded");
+  assert.equal(publicationCalls, 2);
+  assert.equal(store.transitions.filter((row) => row.from_node === "approval").length, 1);
 });
 
 test("simple graph revises on a fresh visit then reaches trusted merge", async () => {

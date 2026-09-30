@@ -381,9 +381,13 @@ export async function browserCommand(
     traceEnabled?: boolean;
     enabled?: boolean;
     modifiers?: string[];
+    beforeUnload?: 'accept';
   },
   api = puppeteer,
 ) {
+  if (input.beforeUnload !== undefined &&
+      (input.beforeUnload !== 'accept' || input.operation !== 'navigate'))
+    throw new ImplementationError('browser_beforeunload', 'Confirm leaving drafts only on an explicit navigation');
   if (input.url && new URL(input.url, origin).origin !== origin)
     throw new ImplementationError(
       "browser_origin",
@@ -444,10 +448,25 @@ export async function browserCommand(
     };
     await applyTrace();
     if (input.operation === "navigate" || input.operation === "reset") {
-      const response = await page.goto(new URL(input.url ?? "/", origin).href, {
-        waitUntil: "networkidle0",
-        timeout: 30_000,
+      const dialogs: Promise<void>[] = [], dialogErrors: unknown[] = [];
+      if (input.beforeUnload === 'accept') page.on('dialog', dialog => {
+        // The request explicitly confirms leaving drafts. Other dialogs keep
+        // their default dismissal and must not be mistaken for that consent.
+        const handling = dialog.type() === 'beforeunload' ? dialog.accept() : dialog.dismiss();
+        dialogs.push(handling.then(() => undefined, error => { dialogErrors.push(error); }));
       });
+      let response, navigationError: unknown;
+      try {
+        response = await page.goto(new URL(input.url ?? "/", origin).href, {
+          waitUntil: "networkidle0",
+          timeout: 30_000,
+        });
+      } catch (error) { navigationError = error; }
+      await Promise.all(dialogs);
+      if (dialogErrors.length) throw new AggregateError(
+        navigationError ? [navigationError, ...dialogErrors] : dialogErrors,
+        'Navigation confirmation failed', {cause:navigationError ?? dialogErrors[0]});
+      if (navigationError) throw navigationError;
       if (response) documentStatus = response.status();
       await applyTrace();
     }

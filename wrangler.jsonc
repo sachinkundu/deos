@@ -27,12 +27,23 @@
       "migrations_dir": "migrations"
     }
   ],
+  "services": [
+    {
+      "binding": "TEST_MARKER_RESOLVER",
+      "service": "deos-queue-consumer-ts",
+      "entrypoint": "SharedTestMarkerResolver"
+    }
+  ],
   "triggers": { "crons": ["* * * * *"] },
   "queues": {
     "producers": [
       {
         "binding": "QUEUE",
         "queue": "deos-sample-project-events"
+      },
+      {
+        "binding": "TEST_QUEUE",
+        "queue": "deos-shared-test-events"
       }
     ]
   },

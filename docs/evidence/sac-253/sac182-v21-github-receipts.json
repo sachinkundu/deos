@@ -1,0 +1,268 @@
+{
+  "sourceResponses": [
+    {
+      "kind": "reviews",
+      "sha256": "e5362f434c63f9b6a8378975140f3ba147d2db500c0fd2c5f4d3c154e8fab1e3"
+    },
+    {
+      "kind": "comments",
+      "sha256": "0f036a416b0e393c66cbbfee360b7ac100b35ea66b0627102a62048b2a0ed0c4"
+    }
+  ],
+  "records": [
+    {
+      "kind": "reviews",
+      "id": 5363265424,
+      "actorId": 233623,
+      "state": "CHANGES_REQUESTED",
+      "commitId": "d8b4a97181a564bcefaba153d32dee8c2b57edde",
+      "originalCommitId": null,
+      "replyTo": null,
+      "createdAt": "2026-09-30T08:00:37Z",
+      "markers": [
+        {
+          "kind": "review_bundle",
+          "reviewId": "01a0f14a-1c78-7ba9-a736-84d47f6d2635",
+          "partId": "review_bundle",
+          "headSha": "d8b4a97181a564bcefaba153d32dee8c2b57edde",
+          "event": "REQUEST_CHANGES"
+        }
+      ]
+    },
+    {
+      "kind": "reviews",
+      "id": 5363555141,
+      "actorId": 233623,
+      "state": "APPROVED",
+      "commitId": "d8b4a97181a564bcefaba153d32dee8c2b57edde",
+      "originalCommitId": null,
+      "replyTo": null,
+      "createdAt": "2026-09-30T08:25:22Z",
+      "markers": [
+        {
+          "kind": "review_bundle",
+          "reviewId": "01a0f16a-bc4e-7727-a2b2-df599d7520c3",
+          "partId": "review_bundle",
+          "headSha": "d8b4a97181a564bcefaba153d32dee8c2b57edde",
+          "event": "APPROVE"
+        }
+      ]
+    },
+    {
+      "kind": "reviews",
+      "id": 5363629087,
+      "actorId": 233623,
+      "state": "APPROVED",
+      "commitId": "d8b4a97181a564bcefaba153d32dee8c2b57edde",
+      "originalCommitId": null,
+      "replyTo": null,
+      "createdAt": "2026-09-30T08:31:28Z",
+      "markers": [
+        {
+          "kind": "review_bundle",
+          "reviewId": "01a0f170-086b-7773-a96f-63d9eaca61d3",
+          "partId": "review_bundle",
+          "headSha": "d8b4a97181a564bcefaba153d32dee8c2b57edde",
+          "event": "APPROVE"
+        }
+      ]
+    },
+    {
+      "kind": "reviews",
+      "id": 5363697374,
+      "actorId": 233623,
+      "state": "COMMENTED",
+      "commitId": "d8b4a97181a564bcefaba153d32dee8c2b57edde",
+      "originalCommitId": null,
+      "replyTo": null,
+      "createdAt": "2026-09-30T08:37:16Z",
+      "markers": [
+        {
+          "kind": "review_bundle",
+          "reviewId": "01a0f175-347f-75b1-aac9-db70eb6247c1",
+          "partId": "review_bundle",
+          "headSha": "d8b4a97181a564bcefaba153d32dee8c2b57edde",
+          "event": "COMMENT"
+        }
+      ]
+    },
+    {
+      "kind": "reviews",
+      "id": 5363813720,
+      "actorId": 233623,
+      "state": "COMMENTED",
+      "commitId": "d8b4a97181a564bcefaba153d32dee8c2b57edde",
+      "originalCommitId": null,
+      "replyTo": null,
+      "createdAt": "2026-09-30T08:47:19Z",
+      "markers": [
+        {
+          "kind": "review_bundle",
+          "reviewId": "01a0f17d-bc05-7547-b194-cd7055721305",
+          "partId": "review_bundle",
+          "headSha": "d8b4a97181a564bcefaba153d32dee8c2b57edde",
+          "event": "COMMENT"
+        }
+      ]
+    },
+    {
+      "kind": "reviews",
+      "id": 5363892428,
+      "actorId": 233623,
+      "state": "COMMENTED",
+      "commitId": "d8b4a97181a564bcefaba153d32dee8c2b57edde",
+      "originalCommitId": null,
+      "replyTo": null,
+      "createdAt": "2026-09-30T08:54:01Z",
+      "markers": [
+        {
+          "kind": "review_bundle",
+          "reviewId": "01a0f183-ee95-72d0-a7f7-9d09d9e5181b",
+          "partId": "review_bundle",
+          "headSha": "d8b4a97181a564bcefaba153d32dee8c2b57edde",
+          "event": "COMMENT"
+        }
+      ]
+    },
+    {
+      "kind": "reviews",
+      "id": 5363979937,
+      "actorId": 233623,
+      "state": "COMMENTED",
+      "commitId": "e90484d32c2818a743b2b212fde61e20a04dfc11",
+      "originalCommitId": null,
+      "replyTo": null,
+      "createdAt": "2026-09-30T09:01:22Z",
+      "markers": [
+        {
+          "kind": "review_bundle",
+          "reviewId": "01a0f18b-72ea-72bb-a763-c631517b58a4",
+          "partId": "review_bundle",
+          "headSha": "e90484d32c2818a743b2b212fde61e20a04dfc11",
+          "event": "COMMENT"
+        }
+      ]
+    },
+    {
+      "kind": "comments",
+      "id": 4142222894,
+      "actorId": 233623,
+      "state": null,
+      "commitId": "e90484d32c2818a743b2b212fde61e20a04dfc11",
+      "originalCommitId": "d8b4a97181a564bcefaba153d32dee8c2b57edde",
+      "replyTo": 4142107001,
+      "createdAt": "2026-09-30T08:00:29Z",
+      "markers": [
+        {
+          "kind": "reply",
+          "clientSubmissionId": "01a0f152-6bfb-7275-b74a-4fd095b893f6",
+          "reviewId": "01a0f14a-1c78-7ba9-a736-84d47f6d2635",
+          "partId": "reply:01a0f152-6bfb-7275-b74a-4fd095b893f6",
+          "headSha": "d8b4a97181a564bcefaba153d32dee8c2b57edde",
+          "path": "canary-review.md"
+        }
+      ]
+    },
+    {
+      "kind": "comments",
+      "id": 4142564747,
+      "actorId": 233623,
+      "state": null,
+      "commitId": "e90484d32c2818a743b2b212fde61e20a04dfc11",
+      "originalCommitId": "d8b4a97181a564bcefaba153d32dee8c2b57edde",
+      "replyTo": 4142546527,
+      "createdAt": "2026-09-30T08:37:06Z",
+      "markers": [
+        {
+          "kind": "reply",
+          "clientSubmissionId": "01a0f175-8c71-755e-91c6-d5184707fa1c",
+          "reviewId": "01a0f175-347f-75b1-aac9-db70eb6247c1",
+          "partId": "reply:01a0f175-8c71-755e-91c6-d5184707fa1c",
+          "headSha": "d8b4a97181a564bcefaba153d32dee8c2b57edde",
+          "path": "canary-review.md"
+        }
+      ]
+    },
+    {
+      "kind": "comments",
+      "id": 4142607674,
+      "actorId": 233623,
+      "state": null,
+      "commitId": "e90484d32c2818a743b2b212fde61e20a04dfc11",
+      "originalCommitId": "d8b4a97181a564bcefaba153d32dee8c2b57edde",
+      "replyTo": 4142591482,
+      "createdAt": "2026-09-30T08:41:48Z",
+      "markers": [
+        {
+          "kind": "reply",
+          "clientSubmissionId": "01a0f179-da23-726b-a094-7e5a27e45f37",
+          "reviewId": "01a0f179-3365-7a5d-abac-2122a9aeb8cd",
+          "partId": "reply:01a0f179-da23-726b-a094-7e5a27e45f37",
+          "headSha": "d8b4a97181a564bcefaba153d32dee8c2b57edde",
+          "path": "canary-review.md"
+        }
+      ]
+    },
+    {
+      "kind": "comments",
+      "id": 4142658409,
+      "actorId": 233623,
+      "state": null,
+      "commitId": "e90484d32c2818a743b2b212fde61e20a04dfc11",
+      "originalCommitId": "d8b4a97181a564bcefaba153d32dee8c2b57edde",
+      "replyTo": 4142631721,
+      "createdAt": "2026-09-30T08:47:11Z",
+      "markers": [
+        {
+          "kind": "reply",
+          "clientSubmissionId": "01a0f17e-6d52-79b3-9937-56a46ab5fcef",
+          "reviewId": "01a0f17d-bc05-7547-b194-cd7055721305",
+          "partId": "reply:01a0f17e-6d52-79b3-9937-56a46ab5fcef",
+          "headSha": "d8b4a97181a564bcefaba153d32dee8c2b57edde",
+          "path": "canary-review.md"
+        }
+      ]
+    },
+    {
+      "kind": "comments",
+      "id": 4142721261,
+      "actorId": 233623,
+      "state": null,
+      "commitId": "e90484d32c2818a743b2b212fde61e20a04dfc11",
+      "originalCommitId": "d8b4a97181a564bcefaba153d32dee8c2b57edde",
+      "replyTo": 4142696238,
+      "createdAt": "2026-09-30T08:53:54Z",
+      "markers": [
+        {
+          "kind": "reply",
+          "clientSubmissionId": "01a0f184-b46a-7e2d-b24a-56824eece930",
+          "reviewId": "01a0f183-ee95-72d0-a7f7-9d09d9e5181b",
+          "partId": "reply:01a0f184-b46a-7e2d-b24a-56824eece930",
+          "headSha": "d8b4a97181a564bcefaba153d32dee8c2b57edde",
+          "path": "canary-review.md"
+        }
+      ]
+    },
+    {
+      "kind": "comments",
+      "id": 4142792667,
+      "actorId": 233623,
+      "state": null,
+      "commitId": "e90484d32c2818a743b2b212fde61e20a04dfc11",
+      "originalCommitId": "d8b4a97181a564bcefaba153d32dee8c2b57edde",
+      "replyTo": 4142750942,
+      "createdAt": "2026-09-30T09:01:14Z",
+      "markers": [
+        {
+          "kind": "reply",
+          "clientSubmissionId": "01a0f189-755e-76a1-8b8d-7298574a5256",
+          "reviewId": "01a0f18b-72ea-72bb-a763-c631517b58a4",
+          "partId": "reply:01a0f189-755e-76a1-8b8d-7298574a5256",
+          "headSha": "e90484d32c2818a743b2b212fde61e20a04dfc11",
+          "path": "canary-review.md"
+        }
+      ]
+    }
+  ],
+  "duplicateReviewOrReplyMarkers": []
+}

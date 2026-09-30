@@ -171,6 +171,7 @@ export async function routeBettaViewRequest(request, env, authenticate = verifyA
       sourceSha: env.BETTAVIEW_SOURCE_SHA ?? null,
       buildInputSha256: env.BETTAVIEW_BUILD_INPUT_SHA256 ?? null,
       versionId: env.CF_VERSION_METADATA?.id ?? null,
+      ...(env.TEST_BASE_VERSION_ID ? {baseVersionId:env.TEST_BASE_VERSION_ID} : {}),
     });
   }
   const accessToken = accessTokenFromRequest(request);
@@ -187,6 +188,16 @@ export async function routeBettaViewRequest(request, env, authenticate = verifyA
     console.warn("BettaView Access verification failed", { reason });
     return json(forbidden ? 403 : 401, { error: forbidden ? "forbidden" : "unauthorized", reason });
   }
+
+  const trustedTestReviewWrite = request.method === "POST" &&
+    ["/api/review-continuations/publish", "/api/review-continuations/action",
+      "/api/settings/bettaview-account"].includes(url.pathname) &&
+    typeof env.TEST_REVIEW_CONTINUATION_CALL === "function";
+  if (env.BETTAVIEW_SITE === "Test" &&
+      (url.pathname.startsWith("/auth/") ||
+       (url.pathname.startsWith("/api/") && request.method !== "GET" &&
+        request.method !== "HEAD" && !trustedTestReviewWrite)))
+    return json(403, { error: "test_provider_write_requires_trusted_adapter" });
 
   if (url.pathname === "/auth/github") return githubStart(request, env);
   if (url.pathname === "/auth/github/callback") return githubCallback(request, env);

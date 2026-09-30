@@ -40,6 +40,14 @@ export interface LinearProjectChoice {
   }>;
 }
 
+export interface LinearTestIssue {
+  id:string;
+  identifier:string;
+  title:string;
+  description:string;
+  teamId:string;
+}
+
 interface LinearCapabilityDependencies {
   fetch: typeof fetch;
 }
@@ -57,6 +65,42 @@ export class LinearCapabilityAdapter {
     this.apiUrl = apiUrl;
     this.accessToken = accessToken;
     this.request = dependencies.fetch ?? ((input, init) => fetch(input, init));
+  }
+
+  async readTestIssue(id:string):Promise<LinearTestIssue> {
+    const payload=await this.graphql(`query DeosTestIssue($id:String!) {
+      issue(id:$id) { id identifier title description team {id} }
+    }`,{id}) as {data?:{issue?:{id?:unknown;identifier?:unknown;title?:unknown;
+      description?:unknown;team?:{id?:unknown}}|null}};
+    const issue=payload.data?.issue;
+    if (!issue || issue.id!==id || typeof issue.identifier!=='string' ||
+        typeof issue.title!=='string' ||
+        !(issue.description===null || typeof issue.description==='string') ||
+        typeof issue.team?.id!=='string')
+      throw new Error('Linear test issue read-back is invalid');
+    return {id,identifier:issue.identifier,title:issue.title,
+      description:issue.description??'',teamId:issue.team.id} as LinearTestIssue;
+  }
+
+  async testActorId():Promise<string> {
+    const payload=await this.graphql('query DeosTestActor { viewer { id } }',{}) as
+      {data?:{viewer?:{id?:unknown}}};
+    const id=payload.data?.viewer?.id;
+    if (typeof id!=='string' || !id) throw new Error('Linear test actor read-back is invalid');
+    return id;
+  }
+
+  async updateTestIssueDescription(id:string,description:string):Promise<LinearTestIssue> {
+    const payload=await this.graphql(`mutation DeosTestIssueMarker($id:String!,$description:String!) {
+      issueUpdate(id:$id,input:{description:$description}) {
+        success issue {id identifier title description team {id}}
+      }
+    }`,{id,description}) as {data?:{issueUpdate?:{success?:unknown;issue?:{
+      id?:unknown;identifier?:unknown;title?:unknown;description?:unknown;
+      team?:{id?:unknown}}}}};
+    if (payload.data?.issueUpdate?.success!==true || payload.data.issueUpdate.issue?.id!==id)
+      throw new Error('Linear test issue update response is invalid');
+    return this.readTestIssue(id);
   }
 
   async implementationContext(id: string): Promise<Record<string,unknown>> {

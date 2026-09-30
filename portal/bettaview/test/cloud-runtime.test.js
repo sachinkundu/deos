@@ -9,6 +9,45 @@ import { createBettaViewHandler, routeBettaViewRequest } from "../worker/index.j
 
 const allowed = async () => ({ email: "sachinkundu@gmail.com" });
 
+test("a test gate header cannot skip the app authentication seam", async () => {
+  const response = await routeBettaViewRequest(new Request("https://bettaview.example/", {
+    headers: { "X-Deos-Test-Gate": "verified" },
+  }), { ...env(), BETTAVIEW_SITE: "Test" }, async () => { throw new Error("missing_access_token"); });
+  assert.equal(response.status, 401);
+});
+
+test("lease review writes keep the checked identity and use the scoped transport", async () => {
+  const calls = [];
+  const runtime = { ...env(), BETTAVIEW_SITE: "Test",
+    GITHUB_TEST_SESSION: async () => "lease-session",
+    GITHUB_REQUEST: async (url) => {
+      assert.equal(url, "https://api.github.com/user");
+      return Response.json({ id: 42 });
+    },
+    TEST_REVIEW_CONTINUATION_CALL: async (method, body, identity) => {
+      calls.push({ method, body, identity });
+      return { reviewId: "review-1", outcome: "continued" };
+    },
+  };
+  const response = await routeBettaViewRequest(new Request(
+    "https://bettaview.example/api/review-continuations/action", {
+      method: "POST", headers: { "Origin": "https://bettaview.example", "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "retry", reviewId: "review-1" }),
+    }), runtime, allowed);
+  assert.equal(response.status, 200);
+  assert.deepEqual(calls, [{ method: "retryLinear", body: { reviewId: "review-1" },
+    identity: { accessAccount: "sachinkundu@gmail.com", githubUserId: 42 } }]);
+});
+
+test("lease writes without a scoped review transport remain denied", async () => {
+  for (const path of ["/api/review-continuations/publish", "/api/settings/bettaview-account", "/auth/github"]) {
+    const response = await routeBettaViewRequest(new Request("https://bettaview.example" + path,
+      { method: "POST" }), { ...env(), BETTAVIEW_SITE: "Test" }, allowed);
+    assert.equal(response.status, 403);
+    assert.equal((await response.json()).error, "test_provider_write_requires_trusted_adapter");
+  }
+});
+
 function env() {
   return {
     ACCESS_TEAM_DOMAIN: "deos-test.cloudflareaccess.com",
