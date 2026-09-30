@@ -8,6 +8,7 @@ from botocore.exceptions import ClientError
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 from shared_test_r2_upload import publish
+import shared_test_r2_upload
 
 KEY = "shared-test/builds/portal/" + "a" * 40 + "/" + "b" * 64 + ".json"
 
@@ -49,3 +50,24 @@ def test_foreign_key_is_rejected_before_provider_call():
     with pytest.raises(ValueError, match="scope"):
         publish("production/worker.js", b"candidate", "application/javascript", store)
     assert store.writes == 0
+
+
+def test_upload_uses_bucket_token_without_replacing_deployment_token(monkeypatch):
+    import boto3
+
+    monkeypatch.setenv("CLOUDFLARE_API_TOKEN", "deployment-token")
+    monkeypatch.setenv("SHARED_TEST_R2_UPLOAD_TOKEN", "bucket-token")
+    seen = []
+    monkeypatch.setattr(shared_test_r2_upload, "credentials",
+                        lambda token: (seen.append(token) or "access-key", "secret"))
+    monkeypatch.setattr(boto3, "client", lambda *args, **kwargs: Store())
+    publish(KEY, b"candidate", "application/json")
+    assert seen == ["bucket-token"]
+    assert shared_test_r2_upload.os.environ["CLOUDFLARE_API_TOKEN"] == "deployment-token"
+
+
+def test_empty_explicit_upload_token_does_not_use_deployment_token(monkeypatch):
+    monkeypatch.setenv("CLOUDFLARE_API_TOKEN", "deployment-token")
+    monkeypatch.setenv("SHARED_TEST_R2_UPLOAD_TOKEN", "")
+    with pytest.raises(ValueError, match="Missing SHARED_TEST_R2_UPLOAD_TOKEN"):
+        publish(KEY, b"candidate", "application/json")

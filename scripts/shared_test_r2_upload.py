@@ -41,7 +41,12 @@ def publish(key, raw, content_type, client=None):
         import boto3
         from botocore.config import Config
 
-        token = os.environ["CLOUDFLARE_API_TOKEN"]
+        # Staging needs a Worker deployment token and a separate bucket token.
+        # An explicitly configured but empty upload token must fail, not fall
+        # back to the deployment credential with a different permission scope.
+        token = os.environ.get("SHARED_TEST_R2_UPLOAD_TOKEN", os.environ.get("CLOUDFLARE_API_TOKEN"))
+        if not token:
+            raise ValueError("Missing SHARED_TEST_R2_UPLOAD_TOKEN for candidate storage")
         access_key, secret = credentials(token)
         client = boto3.client(
             "s3", endpoint_url=f"https://{ACCOUNT}.r2.cloudflarestorage.com",

@@ -86,6 +86,7 @@ def deploy():
                               base_loader=lambda: host_version()["sourceSha"])
     preflight(json.loads((ROOT / "portal/bettaview/wrangler.jsonc").read_text()))
     check_route_access()
+    run("npm", "ci")
     run("npm", "ci", "--prefix", "portal/bettaview")
     run("npm", "run", "bettaview:build")
     run("npm", "--prefix", "portal/bettaview", "test")

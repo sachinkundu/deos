@@ -21,17 +21,19 @@ test('version readback is available without a session and contains only deployme
   assert.equal((await lease.json()).baseVersionId,'11111111-1111-4111-8111-111111111111');
 });
 
-test('lease BettaView needs the edge gate and blocks direct provider writes',async()=>{
+test('lease BettaView needs checked authentication and blocks direct provider writes',async()=>{
   const env={BETTAVIEW_SITE:'Test',ASSETS:{fetch:async()=>new Response('test page')}};
   const url='https://bettaview-test.apps.deos-test.voxdez.com/';
   const denied=async()=>{throw new Error('unauthorized');};
   assert.equal((await routeBettaViewRequest(new Request(url),env,denied)).status,401);
-  const page=await routeBettaViewRequest(new Request(url,{headers:{
-    'X-Deos-Test-Gate':'verified'}}),env,denied);
+  assert.equal((await routeBettaViewRequest(new Request(url,{headers:{
+    'X-Deos-Test-Gate':'verified'}}),env,denied)).status,401);
+  const authenticated=async()=>({email:'reviewer@example.test'});
+  const page=await routeBettaViewRequest(new Request(url),env,authenticated);
   assert.equal(page.status,200);
   assert.equal(await page.text(),'test page');
   const write=await routeBettaViewRequest(new Request(url+'api/comments/reply',{
-    method:'POST',headers:{'X-Deos-Test-Gate':'verified'}}),env,denied);
+    method:'POST'}),env,authenticated);
   assert.equal(write.status,403);
   assert.deepEqual(await write.json(),{
     error:'test_provider_write_requires_trusted_adapter'});
