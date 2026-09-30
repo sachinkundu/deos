@@ -996,3 +996,20 @@ The controller now classifies a shared-test report with an unresolved blocker as
 The retained V16 evidence includes real retry, replay, reply adoption, and replacement results. Both unauthorized Linear moves also reached completed restoration records with separate signed returns. These facts do not make the whole demo pass. The unlinked PR still lacked its visible explanation, and no second checked account was used. Candidate `cbb14e5520889b9a4e047614c776ff4b1731c2c6` fixes the missing explanation and queues a checked review that arrives during restoration. It preserves the SAC-182 implementation. A fresh test was accepted at 02:11 UTC; its outcome remains unverified.
 
 ![Site free after V16 cleanup](sac-182-v16-site-free.jpeg)
+
+## V17 setup failure and retained cleanup
+
+Candidate `cbb14e5520889b9a4e047614c776ff4b1731c2c6` ran from 02:23 to 03:03 UTC on 30 September. It ended blocked. The Settings connection never completed, so the later runs had no checked account and no review continuation intents. The GitHub-only results do not prove the required linked review path.
+
+The runner described the failed connection as Cloudflare error 1101. The saved provider logs identify the original cause: `Node is either not clickable or not an Element` in the browser click command. It never reached the account form. The marker action also reused a global expectation ID from an earlier lease; its original error was `test_marker_plan_conflict`. These were test setup errors, with no evidence of missing provider permission.
+
+The guide now names the visible account form control and requires a checked policy before later scenarios. The setup endpoint enforces that prerequisite. Marker IDs now include the full lease ID. Candidate `663af2bc06baedab0bcd154b59a384c596543d69` also rejects forged page identity fields before creating a review. Its regression tests exercise the actual web transport and signed review entrypoint, including durable fault retention and zero review or provider writes. Root tests passed 672 cases with one optional skip; BettaView passed 132 with one optional skip. Type checks and strict OpenSpec validation passed. These checks do not replace the fresh live run.
+
+The close path saved and read back all 131 database tables, six runner artifacts, 35 captures and proof objects, and 14 store snapshots. All 14 scenario workflows were stopped. All seven owned resources passed removal and absence checks. The site returned to Free at 03:08:06 UTC, fence 34 and revision 3267. The close record remains `blocked_demo` and grants no test or release approval.
+
+- Failure evidence: `30cb73cf9f8577fbff6ac52ee5c9b08322cdef5af6801672a2d74eb602d31917`.
+- Workflow settlement: `f5d0c41da33b23ad4a77c8e9c7d037e9749323af1e492025b848aaa358a200aa`.
+- Cleanup: `026572c73f17bcd3e71a2338ded5b0260b4ef0c6ebd9f1b15700e4d0e704af09`.
+- Absence: `84b6bf347fd50be49413aca5d9b8698b1db64a53b0b6e5fc96400baefdab66e0`.
+
+![Site free after V17 cleanup](sac-182-v17-site-free.jpeg)
