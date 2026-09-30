@@ -60,7 +60,7 @@ export class SharedTestRecovery {
     const evidencePending=await this.env.DB.prepare(`SELECT 1 AS pending FROM test_leases l
       JOIN agent_attempts a ON a.attempt_id=l.attempt_id AND a.run_id=l.run_id
       WHERE l.lease_id=? AND l.run_id=? AND a.node_id='shared_test_demo'
-        AND a.state IN ('blocked','failed') AND NOT EXISTS
+        AND a.state IN ('blocked','failed','interrupted','absolute_timeout') AND NOT EXISTS
           (SELECT 1 FROM test_lease_aborts x WHERE x.lease_id=l.lease_id AND x.run_id=l.run_id)`)
       .bind(owner.owner_lease_id,owner.owner_run_id).first<{pending:number}>();
     if(evidencePending)return;

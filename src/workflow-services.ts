@@ -1437,6 +1437,10 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
     }
   }
 
+  collectStoppedSharedTest(run:OrchestrationRunRecord,attemptId:string,definition:LoadedWorkflowDefinition) {
+    return this.agents.execute(run,'shared_test_demo','shared_test_agent',definition,attemptId);
+  }
+
   requestLinearDone(issueId: string) {
     return this.linear.requestDone(issueId);
   }

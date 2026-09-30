@@ -161,19 +161,20 @@ const destroyRequest = (overrides: Record<string, unknown> = {}, secret = "audit
     }),
   });
 
-for(const state of ['failed','interrupted','absolute_timeout']) test(`explicit ${state} hold release preserves the original error and requires saved outputs and a stopped process`, async () => {
+for(const prefix of ['sbx','impl']) for(const state of ['failed','interrupted','absolute_timeout']) test(`explicit ${prefix} ${state} hold release preserves the original error and requires saved outputs and a stopped process`, async () => {
   const {auditor,store,factory}=setup();
-  const row = {sandbox_id:SANDBOX_ID,sandbox_tier:'basic',attempt_id:ATTEMPT_ID,process_id:'process',
+  const sandboxId=`${prefix}-v1-${"a".repeat(30)}`;
+  const row = {sandbox_id:sandboxId,sandbox_tier:'basic',attempt_id:ATTEMPT_ID,process_id:'process',
     state,result_class:'author_completion_failed',result_detail:'original error',cleanup_state:'pending',
     cleanup_hold_until:'2026-08-17T12:00:00.000Z',updated_at:NOW.toISOString(),savedManifest:false};
-  store.candidates.set(SANDBOX_ID,row);
-  assert.equal((await auditor.handleDestroy(destroyRequest())).status,409);
-  assert.equal((await auditor.handleDestroy(destroyRequest({releaseFailureHold:true}))).status,409);
+  store.candidates.set(sandboxId,row);
+  assert.equal((await auditor.handleDestroy(destroyRequest({sandboxId}))).status,409);
+  assert.equal((await auditor.handleDestroy(destroyRequest({sandboxId,releaseFailureHold:true}))).status,409);
   row.savedManifest=true;
   factory.sandbox.processState='running';
-  assert.equal((await auditor.handleDestroy(destroyRequest({releaseFailureHold:true}))).status,409);
+  assert.equal((await auditor.handleDestroy(destroyRequest({sandboxId,releaseFailureHold:true}))).status,409);
   factory.sandbox.processState='exited';
-  assert.equal((await auditor.handleDestroy(destroyRequest({releaseFailureHold:true}))).status,200);
+  assert.equal((await auditor.handleDestroy(destroyRequest({sandboxId,releaseFailureHold:true}))).status,200);
   assert.equal(row.state,state);
   assert.equal(row.result_class,'author_completion_failed');
   assert.equal(row.result_detail,'original error');

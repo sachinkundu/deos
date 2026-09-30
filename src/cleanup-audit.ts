@@ -303,7 +303,7 @@ export class CleanupAuditor {
     if (
       input.version !== 1 ||
       typeof input.attemptId !== "string" || !/^[0-9a-f-]{36}$/i.test(input.attemptId) ||
-      typeof input.sandboxId !== "string" || !/^sbx-v1-[a-z2-7]{20,80}$/.test(input.sandboxId) ||
+      typeof input.sandboxId !== "string" || !/^(?:sbx|impl)-v1-[a-z2-7]{20,80}$/.test(input.sandboxId) ||
       typeof input.expectedUpdatedAt !== "string" || input.expectedUpdatedAt.length > 64 ||
       Number.isNaN(Date.parse(input.expectedUpdatedAt))
       || (input.releaseFailureHold !== undefined && input.releaseFailureHold !== true)

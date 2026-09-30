@@ -13,7 +13,7 @@ import {sharedTestResultHasBlocker} from './shared-test-result.ts';
 interface Subject {
   run_id:string;lease_id:string;attempt_id:string;candidate_commit:string;
   repository:string;branch:string;pull_request_number:number;task_key:string;
-  fence:number;manifest_id:string;state:string;attempt_state:string;started_at:string;ended_at:string;
+  fence:number;manifest_id:string;state:string;attempt_state:string;result_class:string|null;started_at:string;ended_at:string;
 }
 const hashBytes=async(bytes:ArrayBuffer)=>[...new Uint8Array(
   await crypto.subtle.digest('SHA-256',bytes))].map(n=>n.toString(16).padStart(2,'0')).join('');
@@ -44,7 +44,7 @@ export async function closeBlockedSharedTestDemo(request:Request,env:Env,
   }
   let subject=await env.DB.prepare(`SELECT l.run_id,l.lease_id,l.attempt_id,l.candidate_commit,
     l.repository,l.branch,l.pull_request_number,l.task_key,l.fence,a.manifest_id,e.state,
-      a.state AS attempt_state,a.started_at,a.ended_at
+      a.state AS attempt_state,a.result_class,a.started_at,a.ended_at
     FROM test_environment e JOIN test_leases l ON l.lease_id=e.owner_lease_id
     JOIN agent_attempts a ON a.attempt_id=l.attempt_id AND a.run_id=l.run_id
     WHERE e.site_id=1 AND e.owner_run_id=? AND e.owner_lease_id=?
@@ -53,6 +53,8 @@ export async function closeBlockedSharedTestDemo(request:Request,env:Env,
         (e.state='quiescing' AND e.fence=l.fence+1 AND e.saved_phase='active'))
       AND l.candidate_commit=? AND l.attempt_id=? AND l.activated_at IS NOT NULL
       AND a.node_id='shared_test_demo' AND (a.state='blocked' OR
+        (a.state IN ('failed','interrupted','absolute_timeout') AND a.process_id IS NOT NULL
+          AND a.result_class<>'startup_failed') OR
         (a.state='failed' AND a.result_class='startup_failed' AND a.process_id IS NULL
           AND NOT EXISTS (SELECT 1 FROM test_github_sessions WHERE lease_id=l.lease_id)))
       AND EXISTS (SELECT 1 FROM artifact_manifests m WHERE m.manifest_id=a.manifest_id AND m.state='complete')
@@ -64,7 +66,7 @@ export async function closeBlockedSharedTestDemo(request:Request,env:Env,
     .first<Subject>();
   if(!subject)subject=await env.DB.prepare(`SELECT l.run_id,l.lease_id,l.attempt_id,l.candidate_commit,
     l.repository,l.branch,l.pull_request_number,l.task_key,l.fence,a.manifest_id,l.state,
-    a.state AS attempt_state,a.started_at,a.ended_at FROM test_leases l
+    a.state AS attempt_state,a.result_class,a.started_at,a.ended_at FROM test_leases l
     JOIN agent_attempts a ON a.attempt_id=l.attempt_id AND a.run_id=l.run_id
     JOIN test_lease_closures c ON c.lease_id=l.lease_id AND c.run_id=l.run_id
     WHERE l.run_id=? AND l.lease_id=? AND l.fence=? AND l.candidate_commit=? AND l.attempt_id=?
@@ -80,9 +82,12 @@ export async function closeBlockedSharedTestDemo(request:Request,env:Env,
     FROM artifacts WHERE manifest_id=? AND policy_outcome='accepted' ORDER BY logical_name`)
     .bind(subject.manifest_id).all<{logical_name:string;r2_key:string;sha256:string;byte_size:number}>()).results;
   const result=artifacts.find(a=>a.logical_name==='result.json');
-  const startup=subject.attempt_state==='failed';
+  const startup=subject.attempt_state==='failed' && subject.result_class==='startup_failed';
+  const runtimeFailure=['failed','interrupted','absolute_timeout'].includes(subject.attempt_state) && !startup;
+  const failed=startup || runtimeFailure;
   const startupSummary=artifacts.find(a=>a.logical_name==='failure-summary.json');
-  if(startup ? !startupSummary : (!result || !artifacts.some(a=>a.logical_name==='transcript.jsonl')))
+  if(failed ? (!startupSummary || (runtimeFailure && !artifacts.some(a=>a.logical_name==='transcript.jsonl')))
+      : (!result || !artifacts.some(a=>a.logical_name==='transcript.jsonl')))
     throw new Error('test_blocked_demo_original_artifacts_missing');
   let resultText='',startupText='';
   for(const artifact of artifacts) {
@@ -94,14 +99,14 @@ export async function closeBlockedSharedTestDemo(request:Request,env:Env,
     if(artifact===result)resultText=new TextDecoder().decode(bytes);
     if(artifact===startupSummary)startupText=new TextDecoder().decode(bytes);
   }
-  const outcome=startup ? null : JSON.parse(resultText) as {outcome:string;summary:string;blocker:string};
-  if(!startup && (!outcome || !sharedTestResultHasBlocker(outcome) ||
+  const outcome=failed ? null : JSON.parse(resultText) as {outcome:string;summary:string;blocker:string};
+  if(!failed && (!outcome || !sharedTestResultHasBlocker(outcome) ||
       !(outcome.outcome==='completed' ||
         (outcome.outcome==='blocked' && subject.attempt_state==='blocked'))))
     throw new Error('test_blocked_demo_original_result_not_blocked');
-  if(startup) {
+  if(failed) {
     const summary=JSON.parse(startupText) as {attemptId:string;safeErrorCategory:string};
-    if(summary.attemptId!==subject.attempt_id||summary.safeErrorCategory!=='startup_failed')
+    if(summary.attemptId!==subject.attempt_id||summary.safeErrorCategory!==subject.result_class)
       throw new Error('test_startup_failure_summary_changed');
   }
   const originalErrors=[];
@@ -151,7 +156,8 @@ export async function closeBlockedSharedTestDemo(request:Request,env:Env,
     runId:subject.run_id,leaseId:subject.lease_id,fence:subject.fence,
     phase:'active',operation:'shared_test.blocked_demo',safeCode:'test_demo_setup_blocked',
     workId:`blocked-demo:${subject.attempt_id}`,
-  },new Error(startup?'Demo runner failed before its process started':outcome!.blocker));
+  },new Error(startup?'Demo runner failed before its process started':runtimeFailure
+    ? `Demo runner stopped without completion: ${subject.result_class}`:outcome!.blocker));
   const invalidClosure=subject.state==='closed'?await readInvalidSharedTestClosure(env,subject.run_id,subject.lease_id):null;
   if(!invalidClosure)await new SharedTestCloseStore(env.DB).quiesce(subject.run_id,subject.lease_id,subject.fence);
   const unpublishedSettlement=invalidClosure?null:await settleUnpublishedReview(env,subject.run_id,subject.lease_id);
@@ -165,7 +171,8 @@ export async function closeBlockedSharedTestDemo(request:Request,env:Env,
   const evidence={version:3,kind:'blocked_demo',invalidClosure,runId:subject.run_id,leaseId:subject.lease_id,
     attemptId:subject.attempt_id,candidateCommit:subject.candidate_commit,manifestId:subject.manifest_id,
     faultId,artifacts,captures,setupSnapshot,unpublishedSettlement,browserHistory,result:outcome,
-    startupFailure:startup?{summary:JSON.parse(startupText),originalErrors}:null};
+    startupFailure:startup?{summary:JSON.parse(startupText),originalErrors}:null,
+    runtimeFailure:runtimeFailure?{state:subject.attempt_state,summary:JSON.parse(startupText)}:null};
   const evidenceText=JSON.stringify(evidence),digest=await sha256Hex(evidenceText);
   const key=`shared-test/failed/${subject.lease_id}/${digest}.json`;
   await env.ARTIFACTS.put(key,evidenceText,{onlyIf:{etagDoesNotMatch:'*'},
@@ -189,9 +196,10 @@ export async function closeBlockedSharedTestDemo(request:Request,env:Env,
   const section=[`### ${subject.task_key} test incomplete`,
     `Candidate: ${subject.candidate_commit}. Attempt: ${subject.attempt_id}.`,
     startup?'The test runner failed during startup. No review scenario ran; all remain unverified.':
+      runtimeFailure?'The test runner stopped before completion. Its original failure, transcript and partial evidence are retained. No test pass is claimed.':
       'The demo did not complete all required checks. Any partial app and provider results remain in the retained evidence; this is not a passed demo.',
     invalidClosure?'The cleanup race deleted the final app database before the failure snapshot. No final database snapshot or workflow settlement is claimed. The original false pass record is retained privately and invalidated.':
-    startup?'The original startup error, failure summary, and lease store snapshots are retained privately with verified hashes.':
+    failed?'The original failure, failure summary, and lease store snapshots are retained privately with verified hashes.':
       'The original result, transcript, commands, captures, and lease store snapshots are retained privately with verified hashes.',
     `Failure evidence SHA-256: ${digest}. Saved fault: ${faultId}.`,
     invalidClosure?'The previous pass claim is withdrawn. This correction grants no test or release approval. A fresh test is required.':

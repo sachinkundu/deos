@@ -8,6 +8,8 @@ export async function isBlockedDemoAbort(db:D1Database,runId:string,leaseId:stri
       AND a.proof_read_at IS NOT NULL AND a.failure_evidence_key IS NOT NULL
       AND length(a.failure_evidence_sha256)=64 AND l.attempt_id=t.attempt_id
       AND t.node_id='shared_test_demo' AND (t.state='blocked' OR
+        (t.state IN ('failed','interrupted','absolute_timeout') AND t.process_id IS NOT NULL
+          AND t.result_class<>'startup_failed') OR
         (t.state='failed' AND t.result_class='startup_failed' AND t.process_id IS NULL
           AND NOT EXISTS (SELECT 1 FROM test_github_sessions WHERE lease_id=l.lease_id)))
       AND t.cleanup_state='destroyed'

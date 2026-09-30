@@ -3,6 +3,7 @@ import {processSharedTestBatch} from './shared-test-queue.ts';
 import {scanSharedTest} from './shared-test-scanner.ts';
 import {SharedTestRepairController} from './shared-test-repair-controller.ts';
 import {closeBlockedSharedTestDemo} from './shared-test-blocked-demo.ts';
+import {collectStoppedSharedTestDemo} from './shared-test-stopped-demo.ts';
 import {retryBlockedSharedTestSetup} from './shared-test-setup-retry.ts';
 import {importSharedTestLinearCapture} from './shared-test-operator-capture.ts';
 import {repairSharedTestCandidate} from './shared-test-candidate-repair.ts';
@@ -188,14 +189,15 @@ export default {
     if (path === '/shared-test/linear-capture')
       return captureWorkflowErrors(env.DB,env.ARTIFACTS,
         request.headers.get('X-Test-Run-Id')??'shared-test-capture',path,()=>importSharedTestLinearCapture(request,env));
-    if (path === '/shared-test/blocked-demo-close' || path === '/shared-test/candidate-repair' ||
+    if (path === '/shared-test/stopped-demo-collect' || path === '/shared-test/blocked-demo-close' || path === '/shared-test/candidate-repair' ||
       path === '/shared-test/setup-retry') {
       if (!env.STAGE_RETRY_SECRET || request.headers.get('Authorization') !== `Bearer ${env.STAGE_RETRY_SECRET}`)
         return Response.json({error:'invalid_operator_capability'},{status:401});
       const body=await request.clone().json() as {runId?:unknown};
       if(typeof body?.runId!=='string')return Response.json({error:'invalid_test_recovery_subject'},{status:400});
       return captureWorkflowErrors(env.DB,env.ARTIFACTS,body.runId,path,()=>
-        path==='/shared-test/blocked-demo-close'?closeBlockedSharedTestDemo(request,env)
+        path==='/shared-test/stopped-demo-collect'?collectStoppedSharedTestDemo(request,env)
+          :path==='/shared-test/blocked-demo-close'?closeBlockedSharedTestDemo(request,env)
           :path==='/shared-test/setup-retry'?retryBlockedSharedTestSetup(request,env)
           :repairSharedTestCandidate(request,env));
     }
