@@ -23,6 +23,7 @@ test('review service transport only moves its live test issue and preserves fail
   db.exec('CREATE TABLE test_review_fixture_events(delivery_id TEXT PRIMARY KEY); CREATE TABLE test_browser_sessions(lease_id TEXT);');
   db.exec(readFileSync(new URL('../migrations/0081_shared_test_review_scenarios.sql',import.meta.url),'utf8'));
   db.exec(readFileSync(new URL('../migrations/0089_shared_test_reply_read_fault.sql',import.meta.url),'utf8'));
+  db.exec(readFileSync(new URL('../migrations/0092_shared_test_scenario_handover.sql',import.meta.url),'utf8'));
   const leaseId='b'.repeat(64);
   const props={leaseId,runId:'run',attemptId:'attempt',fence:3};
   const profile={repository:'owner/fixtures',projectId:'project',teamId:'team',githubUserId:123,
@@ -37,7 +38,11 @@ test('review service transport only moves its live test issue and preserves fail
   db.prepare('INSERT INTO test_review_fixtures VALUES (?,?,?,?,?,?,?)').run(
     'fixture','run','attempt','safe_test','github-linear-review-v1','ready',JSON.stringify({
       profile,branch:'deos/canary/attempt',head:'d'.repeat(40),pullNumber:9,issueId:'test-issue'}));
-  const binding={prepare(sql:string){return{bind(...values:unknown[]){return{
+  const binding={batch:async(statements:{run:()=>Promise<unknown>}[])=>{
+    db.exec('BEGIN');
+    try {const result=[];for(const statement of statements)result.push(await statement.run());db.exec('COMMIT');return result;}
+    catch(error){db.exec('ROLLBACK');throw error;}
+  },prepare(sql:string){return{bind(...values:unknown[]){return{
     first:async()=>db.prepare(sql).get(...values as never[])??null,
     run:async()=>({meta:{changes:Number(db.prepare(sql).run(...values as never[]).changes)}}),
     all:async()=>({results:db.prepare(sql).all(...values as never[])}),
@@ -104,12 +109,40 @@ test('review service transport only moves its live test issue and preserves fail
   assert.equal(fixtureWrites,0);
   assert.equal(db.prepare("SELECT state FROM test_review_scenarios WHERE scenario_id='s08'").get()!.state,'ready');
   assert.equal(db.prepare('SELECT COUNT(*) n FROM test_review_scenarios').get()!.n,1);
+  // Exercise the successful guard path against the actual migrated schema.
+  // A failed successor setup retains both its retry record and the old route.
+  const controlCalls:string[]=[];
+  let prepareFails=true;
+  scenarios.control=async(_binding,method)=>{
+    controlCalls.push(method);
+    if(method==='check_prepare')return {ready:true};
+    assert.equal(method,'prepare');
+    if(prepareFails)throw new Error('original successor setup failure');
+    return {runId:'next-run'};
+  };
+  scenarios.provider=async()=>{
+    fixtureWrites++;
+    assert.equal(db.prepare("SELECT scenario_id FROM test_review_scenarios WHERE state='ready'").get()!.scenario_id,'s08');
+    assert.equal(db.prepare("SELECT scenario_id FROM test_review_scenarios WHERE state='preparing'").get()!.scenario_id,'s09');
+    return {response:{}};
+  };
+  await assert.rejects(scenarios.prepare(props,'s09'),/original successor setup failure/);
+  assert.equal(db.prepare("SELECT state FROM test_review_scenarios WHERE scenario_id='s08'").get()!.state,'ready');
+  assert.equal(db.prepare("SELECT state FROM test_review_scenarios WHERE scenario_id='s09'").get()!.state,'preparing');
+  assert.throws(()=>db.prepare("INSERT INTO test_review_scenarios VALUES (?,'s10',NULL,'preparing',NULL)").run(leaseId),/UNIQUE/);
+  assert.throws(()=>db.prepare("INSERT INTO test_review_scenarios VALUES (?,'s10','other','ready','now')").run(leaseId),/UNIQUE/);
+  prepareFails=false;
+  assert.deepEqual(await scenarios.prepare(props,'s09'),{runId:'next-run'});
+  assert.deepEqual(controlCalls,['check_prepare','prepare','check_prepare','prepare']);
+  assert.equal(fixtureWrites,4);
+  assert.equal(db.prepare("SELECT state FROM test_review_scenarios WHERE scenario_id='s08'").get()!.state,'retired');
+  assert.equal(db.prepare("SELECT scenario_run_id FROM test_review_scenarios WHERE state='ready'").get()!.scenario_run_id,'next-run');
   db.prepare("UPDATE test_review_scenarios SET state='retired'").run();
   const response=await scenarios.handle({...props,actions:['test_review_fixture']} as never,
     {version:1,operation:'prepare',scenario:'s08'});
   assert.equal(response.status,409);
   assert.match(JSON.stringify(await response.json()),/unique suffix/);
-  assert.equal(db.prepare('SELECT COUNT(*) n FROM test_review_scenarios').get()!.n,1);
+  assert.equal(db.prepare('SELECT COUNT(*) n FROM test_review_scenarios').get()!.n,2);
   db.prepare('UPDATE test_environment SET fence=4').run();
   await assert.rejects(transport.fetch(request()),/provider_fenced/);
   await assert.rejects(scenarios.proofStatus(props),/scenario_fenced/);
