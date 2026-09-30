@@ -67,13 +67,18 @@ export async function control(request,env) {
   const scenario=typeof value.scenario==='string'&&/^s(?:0[1-9]|1[0-2])(?:-[a-z0-9-]{1,40})?$/.test(value.scenario)?value.scenario:null;
   if(!scenario)throw new Error('test_control_scenario_invalid');
   let saved=await db.prepare('SELECT * FROM lease_test_scenarios WHERE scenario_id=?').bind(scenario).first();
-  if(value.method==='prepare') {
+  if(value.method==='prepare' || value.method==='check_prepare') {
     if(saved)return Response.json({scenario,runId:saved.run_id,evidence:await evidence(env,saved.run_id)});
     if(!/^s01(?:-|$)/.test(scenario) && !await db.prepare("SELECT 1 AS ready FROM project_bettaview_accounts WHERE project_id=? AND status='current'").bind(f.profile.projectId).first())
       throw new Error('test_review_account_not_connected: complete the visible Settings account form before preparing review scenarios');
     const active=await db.prepare('SELECT s.* FROM lease_test_scenarios s JOIN orchestration_runs r ON r.run_id=s.run_id WHERE s.archived_key IS NULL ORDER BY s.created_at DESC LIMIT 1').first();
     if(active) {
       const original=await evidence(env,active.run_id),text=JSON.stringify(original);
+      if(original.operations.some(operation=>operation.action==='restore_human_gate' && operation.state==='pending') || original.intents.some(intent=>
+        intent.outcome==='active' || (intent.outcome==='continued' && !original.transitions.some(t=>t.review_id===intent.review_id))))
+        return Response.json({error:'test_review_scenario_unsettled',scenario:active.scenario_id,
+          recovery:'Finish the current review or restoration and read its final evidence before preparing the next scenario. Read evidence to forward signed provider deliveries; do not repeat publication.'},{status:409});
+      if(value.method==='check_prepare')return Response.json({ready:true});
       const archiveKey='test-scenarios/'+active.scenario_id+'/'+await digest(text)+'.json';
       await env.ARTIFACTS.put(archiveKey,text);
       if(await (await env.ARTIFACTS.get(archiveKey)).text()!==text)throw new Error('test_scenario_archive_changed');
@@ -89,6 +94,7 @@ export async function control(request,env) {
       // facts remain, and the prior projection was captured above before reset.
       await db.prepare('DELETE FROM run_work_products WHERE run_id=?').bind(active.run_id).run();
     }
+    if(value.method==='check_prepare')return Response.json({ready:true});
     const store=new D1OrchestrationStore(db),policy=await store.findPolicy(f.profile.projectId);
     const allocated=await store.allocateRun({projectId:f.profile.projectId,issueId:f.issueId,definition:spec,
       selection:{kind:'default',value:null,labelName:null,reason:'label_absent',evidenceJson:'{}',deliveryId:'fixture:'+scenario,observedAt:now,providerDigest:await digest(scenario)},

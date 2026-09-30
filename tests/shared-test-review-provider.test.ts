@@ -84,6 +84,16 @@ test('review service transport only moves its live test issue and preserves fail
     {proofId:'pending',kind:'app_screen',classification:'private',sanitizerResult:'pending',publicUrl:null},
     {proofId:'published',kind:'app_screen',classification:'public_safe',sanitizerResult:'passed',publicUrl:'https://proof.invalid/checked'},
   ]);
+  let fixtureWrites=0;
+  scenarios.control=async(_binding,method)=>{
+    assert.equal(method,'check_prepare');
+    throw new Error('test_review_scenario_unsettled');
+  };
+  scenarios.provider=async()=>{fixtureWrites++;throw new Error('unexpected fixture write');};
+  await assert.rejects(scenarios.prepare(props,'s09'),/test_review_scenario_unsettled/);
+  assert.equal(fixtureWrites,0);
+  assert.equal(db.prepare("SELECT state FROM test_review_scenarios WHERE scenario_id='s08'").get()!.state,'ready');
+  assert.equal(db.prepare('SELECT COUNT(*) n FROM test_review_scenarios').get()!.n,1);
   db.prepare("UPDATE test_review_scenarios SET state='retired'").run();
   const response=await scenarios.handle({...props,actions:['test_review_fixture']} as never,
     {version:1,operation:'prepare',scenario:'s08'});

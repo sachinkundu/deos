@@ -59,9 +59,11 @@ export class SharedTestReviewScenarios {
       .bind(binding.leaseId,scenario).first<{state:string;scenario_run_id:string|null}>();
     if(before?.state==='retired')throw new Error('test_review_scenario_already_retired');
     if(before?.state==='ready')return this.control(binding,'evidence',{scenario});
+    // Keep the current delivery route, injections and provider state until the
+    // candidate confirms that its review and restoration work has settled.
+    await this.control(binding,'check_prepare',{scenario});
     if(!before)await this.env.DB.batch([
       this.env.DB.prepare("UPDATE test_review_fault_injections SET state='cleared',used_at=? WHERE lease_id=? AND state='armed'").bind(new Date().toISOString(),binding.leaseId),
-      this.env.DB.prepare("UPDATE test_review_scenarios SET state='retired' WHERE lease_id=? AND state='ready'").bind(binding.leaseId),
       this.env.DB.prepare("INSERT INTO test_review_scenarios (lease_id,scenario_id,state) VALUES (?,?,'preparing')").bind(binding.leaseId,scenario),
     ]);
     await this.provider(binding,{operation:'linear.move',operationId:`scenario-${scenario}-initial-state`,
@@ -69,9 +71,12 @@ export class SharedTestReviewScenarios {
     const pull=await this.provider(binding,{operation:'github.read',path:''}) as {response:unknown};
     const value=await this.control(binding,'prepare',{scenario,pull:pull.response});
     if(typeof value.runId!=='string')throw new Error('test_review_scenario_run_missing');
-    await this.env.DB.prepare(`UPDATE test_review_scenarios SET state='ready',scenario_run_id=?,prepared_at=?
+    await this.env.DB.batch([
+      this.env.DB.prepare("UPDATE test_review_scenarios SET state='retired' WHERE lease_id=? AND state='ready'").bind(binding.leaseId),
+      this.env.DB.prepare(`UPDATE test_review_scenarios SET state='ready',scenario_run_id=?,prepared_at=?
       WHERE lease_id=? AND scenario_id=? AND state='preparing'`)
-      .bind(value.runId,new Date().toISOString(),binding.leaseId,scenario).run();
+      .bind(value.runId,new Date().toISOString(),binding.leaseId,scenario),
+    ]);
     return value;
   }
 

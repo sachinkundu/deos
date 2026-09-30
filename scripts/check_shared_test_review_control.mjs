@@ -74,6 +74,15 @@ try {
   await reviews.prepare({reviewId,runId:second.runId,issueId:'issue',repository:'owner/fixture',pullRequestNumber:9,
     headSha:pull.head.sha,gateVisitSequence:1,reviewType:'APPROVE',accountPolicyVersion:1,items:[]},
     'e'.repeat(64),{stateId:'merge',stateName:'Merging',edge:'trusted_merge'},stamp);
+  for(const method of ['prepare','check_prepare']) {
+    const blocked=await request(method,{scenario:'s04',pull});
+    assert.equal(blocked.status,409);
+    assert.equal((await blocked.json()).error,'test_review_scenario_unsettled');
+  }
+  assert.equal(created.length,2);
+  assert.equal(objects.size,1);
+  assert.equal(sql.prepare('SELECT archived_key FROM lease_test_scenarios WHERE scenario_id=?').get('s03').archived_key,null);
+  assert.equal(sql.prepare('SELECT status FROM orchestration_runs WHERE run_id=?').get(second.runId).status,'awaiting_human');
   await assert.rejects(reviews.prepare({reviewId,runId:second.runId,issueId:'issue',repository:'owner/fixture',pullRequestNumber:9,
     headSha:pull.head.sha,gateVisitSequence:1,reviewType:'COMMENT',accountPolicyVersion:1,items:[]},
     'f'.repeat(64),{stateId:'work',stateName:'In Progress',edge:'edit'},stamp),/id_clash/);
@@ -105,5 +114,13 @@ try {
   assert.equal(sql.prepare('SELECT COUNT(*) n FROM review_ops_items').get().n,1);
   assert.equal(sql.prepare('SELECT COUNT(*) n FROM review_repairs').get().n,1);
   assert.equal(sql.prepare('SELECT released_at FROM review_continuation_leases WHERE review_id=?').get(reviewId).released_at,null);
+  // A retained escalation can be archived. An unfinished restoration cannot.
+  assert.equal((await request('check_prepare',{scenario:'s04',pull})).status,200);
+  sql.prepare("UPDATE provider_operations SET action='restore_human_gate',state='pending' WHERE run_id=?").run(second.runId);
+  assert.equal((await request('check_prepare',{scenario:'s04',pull})).status,409);
+  sql.prepare("UPDATE provider_operations SET state='succeeded' WHERE run_id=?").run(second.runId);
+  await request('prepare',{scenario:'s04',pull});
+  assert.equal(created.length,3);
+  assert.equal(objects.size,2);
   console.log('PASS: signed setup, actual candidate allocation/freeze, idempotence, retained scenario evidence, and event forwarding input. No provider proof claimed.');
 } finally {sql.close();rmSync(directory,{recursive:true});}
