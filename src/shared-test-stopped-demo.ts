@@ -18,9 +18,10 @@ export async function collectStoppedSharedTestDemo(request:Request,env:Env):Prom
   const runId=input.runId as string,attemptId=input.attemptId as string;
   const owner=await env.DB.prepare(`SELECT 1 AS ready FROM test_environment e
     JOIN test_leases l ON l.lease_id=e.owner_lease_id AND l.run_id=e.owner_run_id
-    WHERE e.site_id=1 AND e.state='active' AND l.state='active'
+    WHERE e.site_id=1 AND ((e.state='active' AND l.state='active' AND e.fence=l.fence)
+      OR (e.state='quiescing' AND e.saved_phase='active' AND l.state='quiescing' AND e.fence=l.fence+1))
       AND l.run_id=? AND l.lease_id=? AND l.attempt_id=? AND l.candidate_commit=?
-      AND e.fence=? AND l.fence=e.fence
+      AND l.fence=?
       AND NOT EXISTS (SELECT 1 FROM agent_attempts x WHERE x.run_id=l.run_id
         AND x.attempt_id<>l.attempt_id AND x.state IN ('pending','starting','running','collecting'))`)
     .bind(runId,input.leaseId,attemptId,input.candidateCommit,input.fence).first();
