@@ -73,7 +73,15 @@ try {
   await assert.rejects(reviews.prepare({reviewId,runId:second.runId,issueId:'issue',repository:'owner/fixture',pullRequestNumber:9,
     headSha:pull.head.sha,gateVisitSequence:1,reviewType:'COMMENT',accountPolicyVersion:1,items:[]},
     'f'.repeat(64),{stateId:'work',stateName:'In Progress',edge:'edit'},stamp),/id_clash/);
+  const diagnostic=sql.prepare(`INSERT INTO workflow_errors
+    (error_id,run_id,step_name,location,message,detail_r2_key,occurred_at)
+    VALUES (?,?,'review.prepare','review.prepare',?,'private-error','now')`);
+  diagnostic.run('safe-prepare',second.runId,'page_identity_mismatch');
+  diagnostic.run('private-prepare',second.runId,'original provider message with private context');
   const clashEvidence=await (await request('evidence',{scenario:'s03'})).json();
+  assert.deepEqual(clashEvidence.prepareFaults,[{
+    error_id:'safe-prepare',public_code:'page_identity_mismatch',occurred_at:'now'}]);
+  assert.deepEqual((await (await request('evidence',{scenario:'s02'})).json()).prepareFaults,[]);
   assert.equal(clashEvidence.idClashes.length,1);
   assert.deepEqual(Object.keys(clashEvidence.idClashes[0]).sort(),
     ['fault_id','public_code','receivedDigest','review_id','savedDigest']);

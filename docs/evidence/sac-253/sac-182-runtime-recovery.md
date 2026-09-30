@@ -983,3 +983,16 @@ At 00:36:05 UTC on 30 September, all seven owned resources had passed removal an
 ![Site free after V15 cleanup](sac-182-v15-site-free.jpeg)
 
 Candidate `b73b8dae6c05054f5bd9c707b592ccbb3a9593c5` includes the restoration receipt fix, both id-clash fingerprints, and durable pre-intent authentication diagnostics. Local root tests: 666 passed, one optional skip. Signature, expiry, nonce replay, and checked GitHub identity mismatch tests run through the actual RPC method and verify that no review or provider operation is created. A fresh provider run is still required.
+
+
+## V16 result correction and fresh candidate
+
+Candidate `b73b8dae6c05054f5bd9c707b592ccbb3a9593c5` ran from 00:55 to 01:57 UTC on 30 September. The runner reported `completed` while its blocker field still listed the two missing different-user checks. That result is invalid. The coordinator had already accepted it and deleted the test database. The final database snapshot and workflow settlement were lost; neither is claimed here.
+
+The explicit recovery path verified the original report, transcript, commands, 46 captures and proof objects, and the old cleanup receipt. It then appended a correction. It did not rewrite the attempt or its artifacts. All seven resources read back absent and the site showed Free at revision 3164. The correction blocks the old result from granting test or release approval. Failure evidence hash: `0d6c23aa7231f0d86454c6217a4285e2f86ab6bfe36a41205568bca90115a4c4`.
+
+The controller now classifies a shared-test report with an unresolved blocker as blocked, even if it claims completion. Tests cover that mismatch, empty and whitespace-only blockers, retained original bytes, invalidation of a false pass, rejection of a genuine success, and fresh-candidate recovery. The full suite passed 942 tests with four optional skips; type checking passed. Migration 0091 and coordinator version `7f201936-30fa-4e84-afda-0c5c96d3d3c9` are active. All 60 bindings matched the prior snapshot, including 30 variables and 19 secret names.
+
+The retained V16 evidence includes real retry, replay, reply adoption, and replacement results. Both unauthorized Linear moves also reached completed restoration records with separate signed returns. These facts do not make the whole demo pass. The unlinked PR still lacked its visible explanation, and no second checked account was used. Candidate `cbb14e5520889b9a4e047614c776ff4b1731c2c6` fixes the missing explanation and queues a checked review that arrives during restoration. It preserves the SAC-182 implementation. A fresh test was accepted at 02:11 UTC; its outcome remains unverified.
+
+![Site free after V16 cleanup](sac-182-v16-site-free.jpeg)
