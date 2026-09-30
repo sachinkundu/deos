@@ -7,8 +7,8 @@ import pytest
 from botocore.exceptions import ClientError
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
-from shared_test_r2_upload import publish
 import shared_test_r2_upload
+from shared_test_r2_upload import publish
 
 KEY = "shared-test/builds/portal/" + "a" * 40 + "/" + "b" * 64 + ".json"
 
