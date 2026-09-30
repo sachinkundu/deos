@@ -20,6 +20,8 @@ import {
 } from "./review-story-view.js";
 import { applyTheme, getInitialTheme, nextTheme } from "./theme.js";
 import { activeThreadReferences, draftReferenceKey, threadReferenceKey } from "./thread-links.js";
+import { applyReviewReceiptsToDraft, discardReviewDraft, persistReviewDraft, restoreReviewDraft, uuidv7 } from "./review-drafts.js";
+import { continuationBlocked, renderAccountSettings, renderContinuationStatus, restoredContinuationStatus } from "./review-continuation-view.js";
 import {
   MIN_THREAD_RAIL_WIDTH,
   clampThreadRailWidth,
@@ -40,7 +42,9 @@ function layoutWidth() {
   return document.body.clientWidth || document.documentElement.clientWidth;
 }
 
-const linkedPullRequestUrl = new URLSearchParams(window.location.search).get("pr")?.trim() || "";
+const startupParams = new URLSearchParams(window.location.search);
+const linkedPullRequestUrl = startupParams.get("pr")?.trim() || "";
+const settingsView = window.location.pathname === "/settings" || startupParams.get("view") === "settings";
 
 const state = {
   prUrl: linkedPullRequestUrl || getRecentPullRequest(),
@@ -53,6 +57,8 @@ const state = {
   selectedText: "",
   selectionRange: null,
   drafts: [],
+  reviewId: null,
+  continuationStatus: null,
   reviewEvent: "COMMENT",
   activeView: "pr",
   theme: getInitialTheme(),
@@ -108,6 +114,7 @@ function shell() {
           <button type="button" data-portal-view="review">Review</button>
         </nav>
       </div>
+      <a class="button ghost settings-link" href="/settings">Settings</a>
       <button id="theme-toggle" class="theme-toggle" type="button">
         <span class="theme-toggle-icon" aria-hidden="true"></span>
         <span class="theme-toggle-label"></span>
@@ -125,10 +132,14 @@ function shell() {
     <aside id="traceability-citation-popover" class="traceability-citation-popover" role="dialog" aria-label="Traceability citation" hidden></aside>
     <div id="pending-review-bar" class="pending-review-bar" hidden>
       <div><strong id="pending-review-count"></strong><small>Held locally until you publish</small></div>
+      <label>Review summary<textarea id="review-body" rows="2" placeholder="Overall review (optional)"></textarea></label>
       <button id="publish-review" class="button primary">Publish review</button>
     </div>
   `;
   document.querySelector("#pr-form").addEventListener("submit", openPullRequest);
+  document.querySelector('#review-body').addEventListener('input',event=>{
+    state.reviewBody=event.target.value;updateDraftUI();
+  });
   document.querySelectorAll("[data-portal-view]").forEach((button) => button.addEventListener("click", () => {
     Object.assign(state, selectPortalView(button.dataset.portalView));
     renderWorkspace();
@@ -141,14 +152,14 @@ function shell() {
     requestCloseSelectionComposer();
   });
   document.querySelector("#submit-selection").addEventListener("click", stageSelectionComment);
-  document.querySelector("#publish-review").addEventListener("click", publishReview);
+  document.querySelector("#publish-review").addEventListener("click", () => publishReview());
   document.querySelector("#theme-toggle").addEventListener("click", () => {
     state.theme = applyTheme(nextTheme(state.theme));
     updateThemeToggle();
   });
   updateThemeToggle();
   window.addEventListener("beforeunload", (event) => {
-    if (!state.drafts.length) return;
+    if (!state.drafts.some(draft => !draft.alreadyPublishedUrl)) return;
     event.preventDefault();
     event.returnValue = "";
   });
@@ -249,20 +260,28 @@ function updateThemeToggle() {
 }
 
 function confirmDraftDiscard(action) {
-  if (!state.drafts.length) return true;
-  if (!window.confirm(`${action} will discard ${state.drafts.length} unpublished comment${state.drafts.length === 1 ? "" : "s"}. Continue?`)) return false;
+  const count = state.drafts.filter(draft => !draft.alreadyPublishedUrl).length;
+  if (!count) return true;
+  if (!window.confirm(`${action} will discard ${count} unpublished comment${count === 1 ? "" : "s"}. Continue?`)) return false;
   state.drafts = [];
   state.reviewEvent = "COMMENT";
   updateDraftUI();
   return true;
 }
 
-async function loadPullRequest({ preservePath = true, restoreRecent = false } = {}) {
+async function loadPullRequest({ preservePath = true, restoreRecent = false, refreshHead = false } = {}) {
   const workspace = document.querySelector("#workspace");
   workspace.className = "empty-state";
   workspace.innerHTML = `<div class="loader"></div><p>Loading rendered Markdown and native threads from GitHub…</p>`;
   try {
-    const data = await request(`/api/pr?url=${encodeURIComponent(state.prUrl)}`);
+    let data = await request(`/api/pr?url=${encodeURIComponent(state.prUrl)}`);
+    if(data.reviewContinuation?.runId && (refreshHead ||
+        (data.reviewContinuation.boundHeadSha && data.reviewContinuation.boundHeadSha!==data.headSha))) {
+      await request('/api/review-continuations/action',{method:'POST',body:JSON.stringify({
+        action:'refreshHead',runId:data.reviewContinuation.runId,
+        gateVisitSequence:data.reviewContinuation.gateVisitSequence,headSha:data.headSha})});
+      data=await request(`/api/pr?url=${encodeURIComponent(state.prUrl)}`);
+    }
     if (restoreRecent && !canRestoreRecentPullRequest(data)) {
       clearRecentPullRequest();
       state.prUrl = "";
@@ -270,8 +289,25 @@ async function loadPullRequest({ preservePath = true, restoreRecent = false } = 
       return;
     }
     state.data = data;
+    state.continuationStatus = restoredContinuationStatus(data.reviewContinuation);
     state.traceabilityRun = null;
     state.prUrl = data.url;
+    const restoredDraft = restoreReviewDraft(localStorage, data.url, data.headSha);
+    state.reviewId = restoredDraft.reviewId;
+    state.drafts = restoredDraft.items;
+    state.reviewEvent = restoredDraft.event;
+    state.reviewBody=restoredDraft.reviewBody||'';
+    document.querySelector('#review-body').value=state.reviewBody;
+    state.supersedesReviewId=restoredDraft.supersedesReviewId||null;
+    const previous=data.reviewContinuation?.status;
+    if(previous?.outcome==='abandoned_before_linear' &&
+        (restoredDraft.priorReviewId===previous.reviewId || state.supersedesReviewId===previous.reviewId)) {
+      state.supersedesReviewId=previous.reviewId;
+      state.drafts=state.drafts.map(item=>({...item,alreadyPublishedUrl:previous.parts?.find(
+        part=>part.contentItemId===item.clientSubmissionId && ['done','published_prior_intent'].includes(part.status))?.url||null}));
+      persistReviewDraft(localStorage,{...restoredDraft,items:state.drafts,supersedesReviewId:state.supersedesReviewId});
+    }
+    syncDraftReceipts();
     const shareableUrl = new URL(window.location.href);
     shareableUrl.searchParams.set("pr", state.prUrl);
     window.history.replaceState(null, "", shareableUrl);
@@ -831,6 +867,7 @@ function renderWorkspace() {
   const activeThreads = threadsForActiveFile();
   const activeDrafts = draftsForActiveFile();
   const approveCapability = data.reviewCapabilities?.approve || { allowed: true, reason: null };
+  const continuationIsBlocked = continuationBlocked(data.reviewContinuation);
   const workspace = document.querySelector("#workspace");
   workspace.className = "workspace";
   workspace.innerHTML = `
@@ -845,11 +882,12 @@ function renderWorkspace() {
       </nav>
       <div class="review-actions">
         <span class="eyebrow">Submit review state</span>
-        <button data-review="COMMENT" class="button subtle ${state.reviewEvent === "COMMENT" ? "selected" : ""}">Comment</button>
-        <button data-review="APPROVE" class="button subtle ${state.reviewEvent === "APPROVE" ? "selected" : ""}" ${approveCapability.allowed ? "" : `disabled title="${escapeHtml(approveCapability.reason)}"`}>Approve</button>
-        <button data-review="REQUEST_CHANGES" class="button subtle danger ${state.reviewEvent === "REQUEST_CHANGES" ? "selected" : ""}">Request changes</button>
+        <button data-review="COMMENT" class="button subtle ${state.reviewEvent === "COMMENT" ? "selected" : ""}" ${continuationIsBlocked ? "disabled" : ""}>Comment</button>
+        <button data-review="APPROVE" class="button subtle ${state.reviewEvent === "APPROVE" ? "selected" : ""}" ${approveCapability.allowed && !continuationIsBlocked ? "" : `disabled title="${escapeHtml(approveCapability.reason || data.reviewContinuation?.reason)}"`}>Approve</button>
+        <button data-review="REQUEST_CHANGES" class="button subtle danger ${state.reviewEvent === "REQUEST_CHANGES" ? "selected" : ""}" ${continuationIsBlocked ? "disabled" : ""}>Request changes</button>
         ${approveCapability.allowed ? "" : `<p class="review-restriction">Signed in as @${escapeHtml(data.viewerLogin)}. ${escapeHtml(approveCapability.reason)}</p>`}
       </div>
+      ${renderContinuationStatus(data.reviewContinuation, state.continuationStatus)}
       <div class="file-rail-resizer" role="separator" aria-label="Resize changed files sidebar" aria-orientation="vertical" aria-valuemin="${MIN_FILE_RAIL_WIDTH}" tabindex="0"></div>
     </aside>
     <section class="document-column">
@@ -896,6 +934,7 @@ function renderWorkspace() {
     loadPullRequest();
   });
   document.querySelectorAll("[data-review]").forEach((button) => button.addEventListener("click", () => submitReview(button.dataset.review)));
+  bindContinuationActions();
   document.querySelector("#rendered-document")?.addEventListener("mouseup", handleTextSelection);
   if (!qualityView) bindThreadActions();
   updateDraftBar();
@@ -1040,15 +1079,16 @@ function referencePosition(key) {
 
 function renderDrafts(drafts) {
   if (!drafts.length) return "";
-  return `<div class="draft-heading"><span class="eyebrow">Unpublished</span><span>Only in this tab</span></div>${drafts.map((draft) => {
+  const unpublished = drafts.filter(draft => !draft.alreadyPublishedUrl).length;
+  return `<div class="draft-heading"><span class="eyebrow">Review notes</span><span>${unpublished} unpublished</span></div>${drafts.map((draft) => {
     const key = draftReferenceKey(draft);
     return `
     <section class="thread-card draft-card" data-thread-key="${escapeHtml(key)}" data-thread-path="${escapeHtml(draft.path)}" data-thread-line="${draft.startLine}" tabindex="-1">
       <div class="thread-meta">
         <div class="thread-location"><span class="thread-position-index">${referencePosition(key)}</span><button class="line-ref" data-go-path="${escapeHtml(draft.path)}" data-go-line="${draft.startLine}">${escapeHtml(draft.path)}:${draft.startLine}${draft.endLine !== draft.startLine ? `–${draft.endLine}` : ""}</button></div>
-        <span>Draft</span>
+        <span>${draft.alreadyPublishedUrl ? "Published" : "Draft"}</span>
       </div>
-      <div class="comment"><div class="avatar">D</div><div><strong>Unpublished ${draft.kind === "reply" ? "reply" : "comment"}</strong><p>${escapeHtml(draft.body)}</p>${draft.kind === "mermaid-annotation" ? `<span class="draft-kind">Annotated diagram</span>` : ""}</div></div>
+      <div class="comment"><div class="avatar">D</div><div><strong>${draft.alreadyPublishedUrl ? 'Already published · excluded from new writes' : `Unpublished ${draft.kind === "reply" ? "reply" : "comment"}`}</strong><p>${escapeHtml(draft.body)}</p>${draft.kind === "mermaid-annotation" ? `<span class="draft-kind">Annotated diagram</span>` : ""}</div></div>
       <button class="remove-draft" data-remove-draft="${draft.clientSubmissionId}">Remove</button>
     </section>`;
   }).join("")}`;
@@ -1066,11 +1106,23 @@ function bindThreadActions() {
 function updateDraftBar() {
   const bar = document.querySelector("#pending-review-bar");
   if (!bar) return;
-  bar.hidden = state.drafts.length === 0;
-  document.querySelector("#pending-review-count").textContent = `${state.drafts.length} unpublished comment${state.drafts.length === 1 ? "" : "s"}`;
+  const count = state.drafts.filter(draft => !draft.alreadyPublishedUrl).length;
+  bar.hidden = state.drafts.length === 0 || (count === 0 &&
+    state.continuationStatus?.reviewId === state.reviewId && state.continuationStatus.outcome === "continued");
+  document.querySelector("#pending-review-count").textContent = `${count} unpublished comment${count === 1 ? "" : "s"}`;
+}
+
+function syncDraftReceipts() {
+  const draft = {reviewId: state.reviewId, items: state.drafts};
+  const next = applyReviewReceiptsToDraft(draft, state.continuationStatus);
+  if (next !== draft) {
+    state.drafts = next.items;
+    updateDraftUI();
+  }
 }
 
 function updateDraftUI() {
+  if (state.data && state.reviewId) persistReviewDraft(localStorage, { version: 1, reviewId: state.reviewId, reviewBody:state.reviewBody||'', supersedesReviewId:state.supersedesReviewId||null, prUrl: state.prUrl, headSha: state.data.headSha, event: state.reviewEvent, items: state.drafts });
   updateDraftBar();
   const threads = document.querySelector("#threads");
   if (!threads || !state.data) return;
@@ -1196,7 +1248,7 @@ function stageSelectionComment() {
     body: body.trim(),
     startLine: lines?.startLine || 1,
     endLine: lines?.endLine || lines?.startLine || 1,
-    clientSubmissionId: id(),
+    clientSubmissionId: uuidv7(),
   });
   button.textContent = "Add comment";
   closeSelectionComposer();
@@ -1363,7 +1415,7 @@ function setupDrawing(card, block, file) {
         body: body.trim(),
         startLine: block.startLine,
         endLine: block.endLine,
-        clientSubmissionId: id(),
+        clientSubmissionId: uuidv7(),
       });
       card.querySelector("textarea").value = "";
       commitDrawingState([]);
@@ -1378,29 +1430,116 @@ function setupDrawing(card, block, file) {
     }
   });
 }
-
-async function publishReview() {
-  if (!state.drafts.length) return;
+async function publishReview(event = state.reviewEvent) {
+  const linked = Boolean(state.data.reviewContinuation?.runId);
+  if (!state.drafts.length && event === "COMMENT") return;
   const button = document.querySelector("#publish-review");
-  button.disabled = true;
-  button.textContent = "Publishing…";
+  if (button) {
+    button.disabled = true;
+    button.textContent = "Publishing…";
+  }
   try {
-    const result = await request("/api/comments/batch", {
+    const payload = {
+      prUrl: state.prUrl,
+      headSha: state.data.headSha,
+      event,
+      comments: state.drafts,
+      reviewId: state.reviewId,
+      supersedesReviewId:state.supersedesReviewId||null,
+      continuation: state.data.reviewContinuation,
+      reviewBody:state.reviewBody || (state.drafts.length ? "" : `BettaView review: ${event.toLowerCase().replace("_", " ")}.`),
+    };
+    const result = await request(linked ? "/api/review-continuations/publish" : state.drafts.length ? "/api/comments/batch" : "/api/reviews", {
       method: "POST",
-      body: JSON.stringify({ prUrl: state.prUrl, headSha: state.data.headSha, event: state.reviewEvent, comments: state.drafts }),
+      body: JSON.stringify(linked ? payload : { ...payload, body: payload.reviewBody }),
     });
     const count = state.drafts.length;
+    if (linked) {
+      state.continuationStatus = result.continuation;
+      if (!result.continuation?.github?.complete) {
+        syncDraftReceipts();
+        renderWorkspace();
+        setNotice(result.continuation?.safeError?.message ||
+          "GitHub publication is not verified. Your unpublished comments are still here. Check the review status before continuing.", "error");
+        return;
+      }
+    }
+    discardReviewDraft(localStorage, { prUrl: state.prUrl, headSha: state.data.headSha });
     state.drafts = [];
+    state.reviewId = uuidv7();
     state.reviewEvent = "COMMENT";
     closeSelectionComposer();
     updateDraftBar();
-    setNotice(`${result.published ?? count} comment${count === 1 ? "" : "s"} published from one review submission.`, "success");
+    setNotice(linked
+      ? `GitHub saved the review. Linear is ${result.continuation.linear.status.replaceAll("_", " ")}.`
+      : `${result.published ?? count} comment${count === 1 ? "" : "s"} published from one review submission.`, "success");
     await loadPullRequest();
   } catch (error) {
+    if (linked && state.reviewId) {
+      try {
+        state.continuationStatus = await request(`/api/review-continuations?reviewId=${encodeURIComponent(state.reviewId)}`);
+        syncDraftReceipts();
+        renderWorkspace();
+      } catch (statusError) {
+        console.error("BettaView continuation status refresh failed", statusError);
+      }
+    }
     setNotice(`${error.message} Your unpublished comments are still here.`, "error");
   } finally {
-    button.disabled = false;
-    button.textContent = "Publish review";
+    if (button) {
+      button.disabled = false;
+      button.textContent = "Publish review";
+    }
+  }
+}
+
+async function runContinuationAction(action) {
+  if (action === "reload") return loadPullRequest({refreshHead:state.continuationStatus?.outcome!=='continued'});
+  if (action === "replace") {
+    state.supersedesReviewId=state.continuationStatus?.reviewId||null;
+    state.reviewId = uuidv7();
+    state.continuationStatus = null;
+    updateDraftUI();
+    return loadPullRequest({refreshHead:true});
+  }
+  const reviewId = state.continuationStatus?.reviewId;
+  if (!reviewId || !["retry", "abandon"].includes(action)) return;
+  const buttons = [...document.querySelectorAll("[data-continuation-action]")];
+  buttons.forEach((button) => { button.disabled = true; });
+  try {
+    state.continuationStatus = await request("/api/review-continuations/action", {
+      method: "POST",
+      body: JSON.stringify({ reviewId, action }),
+    });
+    syncDraftReceipts();
+    renderWorkspace();
+    setNotice(action === "retry" ? "Retrying the task transition without republishing GitHub." : "Review continuation abandoned.", "success");
+  } catch (error) {
+    setNotice(error.message, "error");
+    buttons.forEach((button) => { button.disabled = false; });
+  }
+}
+
+let continuationRefreshTimer;
+function bindContinuationActions() {
+  document.querySelectorAll("[data-continuation-action]").forEach((button) => button.addEventListener("click", () => {
+    runContinuationAction(button.dataset.continuationAction);
+  }));
+  clearTimeout(continuationRefreshTimer);
+  const status=state.continuationStatus;
+  if(status?.reviewId && status.outcome==='active' &&
+      (status.github.status==='publishing' || ['moving','awaiting_delivery'].includes(status.linear.status))) {
+    continuationRefreshTimer=setTimeout(async()=>{
+      try {
+        const next=await request(`/api/review-continuations?reviewId=${encodeURIComponent(status.reviewId)}`);
+        if(state.continuationStatus?.reviewId!==status.reviewId)return;
+        state.continuationStatus=next;
+        syncDraftReceipts();
+        const card=document.querySelector('.continuation-card');
+        if(card)card.outerHTML=renderContinuationStatus(state.data.reviewContinuation,next);
+        bindContinuationActions();
+      } catch(error) {setNotice(`Could not refresh the review: ${error.message}`,'error');}
+    },2000);
   }
 }
 
@@ -1418,7 +1557,7 @@ function submitReply(commentId) {
     body: input.value.trim(),
     startLine: thread.line || thread.startLine || 1,
     endLine: thread.line || thread.startLine || 1,
-    clientSubmissionId: id(),
+    clientSubmissionId: uuidv7(),
   });
   input.value = "";
   updateDraftUI();
@@ -1429,22 +1568,14 @@ async function submitReview(event) {
   if (event === "APPROVE" && state.data.reviewCapabilities?.approve?.allowed === false) {
     return setNotice(state.data.reviewCapabilities.approve.reason, "error");
   }
+  state.reviewEvent = event;
+  updateDraftUI();
+  document.querySelectorAll("[data-review]").forEach((button) => button.classList.toggle("selected", button.dataset.review === event));
   if (state.drafts.length) {
-    state.reviewEvent = event;
-    document.querySelectorAll("[data-review]").forEach((button) => button.classList.toggle("selected", button.dataset.review === event));
     setNotice(`${event.replace("_", " ")} will be applied when the review is published.`, "success");
     return;
   }
-  try {
-    await request("/api/reviews", {
-      method: "POST",
-      body: JSON.stringify({ prUrl: state.prUrl, headSha: state.data.headSha, event, body: `BettaView experiment review: ${event.toLowerCase().replace("_", " ")}.` }),
-    });
-    setNotice(`${event.replace("_", " ")} review submitted.`, "success");
-    await loadPullRequest();
-  } catch (error) {
-    setNotice(error.message, "error");
-  }
+  await publishReview(event);
 }
 
 function sourceWordTokens(value) {
@@ -1730,8 +1861,44 @@ function goToLine(path, line) {
   }, 120);
 }
 
+function renderSettingsPage(settings, selectedProject = null) {
+  const project = settings.projects.find(item => item.projectId === selectedProject) || settings.projects[0];
+  const workspace = document.querySelector("#workspace");
+  workspace.className = "settings-page";
+  workspace.innerHTML = renderAccountSettings(project?.account || null, settings, project?.projectId);
+  document.querySelector('[name="projectId"]').addEventListener('change', event => renderSettingsPage(settings, event.target.value));
+  document.querySelector("#account-link-form").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const button = event.currentTarget.querySelector("button");
+    button.disabled = true;
+    try {
+      const nextAccount = await request("/api/settings/bettaview-account", {
+        method: "POST",
+        body: JSON.stringify(Object.fromEntries(new FormData(event.currentTarget))),
+      });
+      project.account = nextAccount;
+      renderSettingsPage(settings, project.projectId);
+      setNotice("Checked account policy activated for future runs.", "success");
+    } catch (error) {
+      setNotice(error.message, "error");
+      button.disabled = false;
+    }
+  });
+}
+
+async function loadSettingsPage() {
+  try { renderSettingsPage(await request('/api/settings/bettaview-account')); }
+  catch (error) {
+    if (error.code === 'github_authorization_required' || error.code === 'github_reauthorization_required')
+      renderAuthorizationPrompt('Sign in to connect your checked review account.', '/auth/github?returnTo=%2Fsettings');
+    else setNotice(error.message, 'error');
+  }
+}
+
 shell();
-if (state.prUrl) {
+if (settingsView) {
+  loadSettingsPage();
+} else if (state.prUrl) {
   loadPullRequest({ preservePath: false, restoreRecent: !linkedPullRequestUrl });
 } else {
   renderOpenPrompt();

@@ -7,6 +7,8 @@ on:
       - 'portal/bettaview/**'
       - 'scripts/deploy_bettaview_staging.py'
       - 'scripts/portal_release.py'
+      - 'scripts/shared_test*.py'
+      - 'package*.json'
       - '.github/workflows/bettaview-staging.yml'
   workflow_dispatch:
 
@@ -36,6 +38,10 @@ jobs:
       - name: Deploy and verify BettaView staging
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.PORTAL_STAGING_CLOUDFLARE_API_TOKEN }}
+          SHARED_TEST_UPLOAD_TRANSPORT: s3
+          SHARED_TEST_R2_UPLOAD_TOKEN: ${{ secrets.SHARED_TEST_R2_UPLOAD_TOKEN }}
           PORTAL_ACCESS_CLIENT_ID: ${{ vars.PORTAL_ACCESS_CLIENT_ID }}
           PORTAL_ACCESS_CLIENT_SECRET: ${{ secrets.PORTAL_ACCESS_CLIENT_SECRET }}
-        run: python scripts/deploy_bettaview_staging.py
+        run: |
+          python -m pip install boto3==1.40.0
+          python scripts/deploy_bettaview_staging.py

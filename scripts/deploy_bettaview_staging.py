@@ -31,7 +31,11 @@ def preflight(config):
         "routes": [{"pattern": HOST, "custom_domain": True}],
         "workers_dev": False,
         "preview_urls": False,
-        "services": [{"binding": "DEOS_PORTAL", "service": "deos-workflow-portal-staging"}],
+        "services": [
+            {"binding": "DEOS_REVIEW_CONTINUATION", "service": "deos-queue-consumer-ts",
+             "entrypoint": "ReviewContinuation"},
+            {"binding": "DEOS_PORTAL", "service": "deos-workflow-portal-staging"},
+        ],
         "version_metadata": {"binding": "CF_VERSION_METADATA"},
     }
     if config.get("account_id") != ACCOUNT or config.get("main") != "worker/index.js":
@@ -82,6 +86,7 @@ def deploy():
                               base_loader=lambda: host_version()["sourceSha"])
     preflight(json.loads((ROOT / "portal/bettaview/wrangler.jsonc").read_text()))
     check_route_access()
+    run("npm", "ci")
     run("npm", "ci", "--prefix", "portal/bettaview")
     run("npm", "run", "bettaview:build")
     run("npm", "--prefix", "portal/bettaview", "test")

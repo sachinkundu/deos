@@ -66,6 +66,7 @@ export { DeosWorkflow, Sandbox, Standard2Sandbox };
 export { ContainerProxy } from "@cloudflare/sandbox";
 export { ImplementationSandbox, ImplementationStandard2Sandbox } from "./sandbox-platform.ts";
 export { RouteAdmin } from "./route-admin-entrypoint.ts";
+export { ReviewContinuation } from "./review-continuation-entrypoint.ts";
 export { SharedTestAppGate } from './shared-test-app-gate-entrypoint.ts';
 export { SharedTestMarkerResolver } from './shared-test-marker-resolver-entrypoint.ts';
 export { SharedTestGitHubBrokerEntrypoint } from './shared-test-github-broker-entrypoint.ts';
@@ -278,6 +279,7 @@ export default {
       await scanSharedTest(env);
       return;
     }
+    await expireOverdueReviewDeliveries(env.DB);
     await registerBundledWorkflowDefinitions(env as unknown as QueueConsumerEnv);
     await reconcileWorkflowEvents(env);
     await claudeRunner(env).audit();
@@ -288,3 +290,4 @@ export default {
 } satisfies ExportedHandler<Env, QueueBody>;
 
 export { RecentIssues } from "./recent-issues-entrypoint.ts";
+import {expireOverdueReviewDeliveries} from './review-continuation.ts';

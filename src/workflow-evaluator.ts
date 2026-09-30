@@ -31,6 +31,12 @@ export interface HumanGateEvent {
   humanGateStateId: string;
   approvalStateNames: readonly string[];
   rejectionStateNames: readonly string[];
+  bettaviewReview?: {
+    reviewId: string;
+    reviewType: "COMMENT" | "REQUEST_CHANGES" | "APPROVE";
+    githubUserId: number;
+    linearAppActorId: string;
+  };
 }
 
 export type WorkflowDecisionInput =
@@ -175,7 +181,11 @@ export const evaluateNodeOutcome = (
     ? input.fromStateId === input.humanGateStateId
     : input.fromStateName === node.linearState;
   if (!departedActiveGate) return { kind: "wait", reason: "unrelated_event" };
-  if (input.actorType !== "user" || input.actorId === null) {
+  const reviewed = input.bettaviewReview;
+  const reviewedTarget = reviewed?.reviewType === "APPROVE" ? "Merging" : "In Progress";
+  const reviewedActor = reviewed !== undefined && input.actorId === reviewed.linearAppActorId
+    && input.toStateName === reviewedTarget;
+  if (!reviewedActor && (input.actorType !== "user" || input.actorId === null)) {
     return {
       kind: "repair_gate",
       nodeId,
@@ -211,8 +221,8 @@ export const evaluateNodeOutcome = (
     fromNode: nodeId,
     toNode: edge(node, outcome),
     outcome,
-    actorId: input.actorId,
-    actorType: input.actorType,
+    actorId: reviewedActor ? String(reviewed?.githubUserId) : input.actorId,
+    actorType: reviewedActor ? "user" : input.actorType,
     causeReference: input.deliveryId,
     contractViolation: false,
   };

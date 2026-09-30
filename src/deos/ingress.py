@@ -38,7 +38,8 @@ class LinearIngressConfig:
     signing_secret: bytes
     relevant_project_ids: frozenset[str]
     relevant_transitions: frozenset[str]
-    max_timestamp_age: timedelta = timedelta(minutes=5)
+    max_timestamp_age: timedelta = timedelta(hours=8, minutes=15)
+    max_future_age: timedelta = timedelta(minutes=5)
 
 
 @dataclass(frozen=True, slots=True)
@@ -84,8 +85,10 @@ class LinearWebhookACL:
         except (TypeError, ValueError, OverflowError) as exc:
             raise InvalidWebhook("invalid Linear timestamp") from exc
         timestamp = datetime.fromtimestamp(timestamp_ms / 1000, tz=UTC)
-        if abs(now - timestamp) > self._config.max_timestamp_age:
+        if timestamp < now - self._config.max_timestamp_age:
             raise InvalidWebhook("stale Linear timestamp")
+        if timestamp > now + self._config.max_future_age:
+            raise InvalidWebhook("future Linear timestamp")
 
         expected = hmac.new(self._config.signing_secret, body, hashlib.sha256).hexdigest()
         supplied = signature.removeprefix("sha256=")
