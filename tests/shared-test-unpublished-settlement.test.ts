@@ -36,7 +36,7 @@ function fixture() {
     operationRows:[] as Record<string,unknown>[],reviewRows:[] as Record<string,unknown>[],
     parts:[] as Record<string,unknown>[],attempts:[] as Record<string,unknown>[],
     content:[] as Record<string,unknown>[],githubComments:[] as Record<string,unknown>[],
-    repairs:[] as Record<string,unknown>[],ops:[] as Record<string,unknown>[],
+    repairs:[] as Record<string,unknown>[],ops:[] as Record<string,unknown>[],retiredRuns:[] as Record<string,unknown>[],
     githubWrites:0,githubReceipt:{id:123,user:{id:1},html_url:'https://github.com/owner/test/pull/1#pullrequestreview-123',
       state:'APPROVED',commit_id:'c'.repeat(40)}};
   const provider=async(input:RequestInfo|URL,init?:RequestInit)=>{
@@ -74,6 +74,7 @@ function fixture() {
       else if(sql.includes('review_content_items'))result=[{success:true,results:state.content}];
       else if(sql.includes('review_repairs'))result=[{success:true,results:state.repairs}];
       else if(sql.includes('review_ops_items'))result=[{success:true,results:state.ops}];
+      else if(sql.includes('SELECT run_id,status,terminal_at'))result=[{success:true,results:state.retiredRuns}];
       else result=[{success:true,results:[{run_id:state.foreign==='run'?'foreign':'scenario-1',workflow_instance_id:'wf-v1-owned'}]}];
     } else if(path.endsWith('/status')) {
       assert.equal(init?.method,'PATCH');assert.deepEqual(JSON.parse(String(init?.body)),{status:'terminate'});
@@ -487,4 +488,56 @@ test(`lost reply cleanup retains unresolved candidate state after independent ho
     assert.equal(f.state.githubWrites,0);
     assert.equal(JSON.stringify({intent,parts:f.state.parts,attempts:f.state.attempts}),original);
   }finally{f.db.close();}
+});
+
+
+for(const invalid of [null,'digest','outcome','not-retired','time','open-call','provider-reached','target','fence','error','ambiguous','overlap','malformed-attempt-time','malformed-operation-time','delivery','gate'] as const)
+test(`orphaned Linear cleanup requires one retained failure before the write: ${invalid??'valid'}`,async()=>{
+  const f=await publishedFixture();
+  try {
+    const id=String(f.state.reviewRows[0].review_id),operation=`review:${id}:linear-state`;
+    Object.assign(f.env,{LINEAR_API_URL:'https://api.linear.app/graphql'});
+    Object.assign(f.state.reviewRows[0],{outcome:'active',linear_status:'moving',terminal_at:null,
+      linear_delivery_deadline:null,linear_operation_id:operation});
+    Object.assign(f.state.attempts[1],{started_at:'2026-09-30T03:40:50Z',finished_at:null,outcome:null,
+      permit_id:`${id}:linear:linear-state:1`,provider_operation_id:null,fault_id:null,
+      request_digest:await sha256Hex(JSON.stringify({issueId:'fixture-issue',operationId:operation,reviewId:id,stateId:'merge-state'}))});
+    f.state.retiredRuns=[{run_id:'scenario-1',status:'canceled',terminal_at:'2026-09-30T03:41:56Z'}];
+    f.state.decisions=0;f.state.gates=[];
+    const failure=JSON.stringify({name:'Error',message:'test_review_scope_read_failed:503:original upstream error',
+      stack:'Error: original upstream error\n at SharedTestReviewProviderTransport.fetch'});
+    f.db.sqlite.prepare(`INSERT INTO test_review_provider_requests VALUES
+      ('scope-call',?,1,'fixture','POST','https://api.linear.app/graphql',NULL,?,'2026-09-30T03:40:51Z','2026-09-30T03:41:03Z')`).run(f.lease,failure);
+    if(invalid==='digest')f.state.attempts[1].request_digest='wrong';
+    if(invalid==='outcome')f.state.attempts[1].outcome='unclear';
+    if(invalid==='not-retired')f.state.retiredRuns[0].status='awaiting_human';
+    if(invalid==='time')f.state.retiredRuns[0].terminal_at='2026-09-30T03:41:00Z';
+    if(invalid==='open-call')f.db.sqlite.exec('UPDATE test_review_provider_requests SET finished_at=NULL');
+    if(invalid==='provider-reached')f.db.sqlite.exec('UPDATE test_review_provider_requests SET provider_status=200');
+    if(invalid==='target')f.db.sqlite.exec("UPDATE test_review_provider_requests SET target='https://other.invalid/graphql'");
+    if(invalid==='fence')f.db.sqlite.exec('UPDATE test_review_provider_requests SET fence=9');
+    if(invalid==='error')f.db.sqlite.exec(`UPDATE test_review_provider_requests SET failure_json='{"message":"socket closed after the move","stack":"original"}'`);
+    if(invalid==='ambiguous')f.db.sqlite.exec("INSERT INTO test_review_provider_requests SELECT 'second',lease_id,fence,resource_id,method,target,provider_status,failure_json,started_at,finished_at FROM test_review_provider_requests");
+    if(invalid==='overlap')f.state.attempts.push({...f.state.attempts[1],generation:2,finished_at:'2026-09-30T03:41:03Z',outcome:'succeeded'});
+    if(invalid==='malformed-attempt-time')f.state.attempts.push({...f.state.attempts[1],generation:2,started_at:'invalid',finished_at:'2026-09-30T03:41:03Z',outcome:'succeeded'});
+    if(invalid==='malformed-operation-time')f.state.operationRows.push({started_at:'invalid',completed_at:'2026-09-30T03:41:03Z'});
+    if(invalid==='delivery')f.db.sqlite.exec("UPDATE test_review_fixture_events SET provider_time='2026-09-30T03:41:00Z'");
+    if(invalid==='gate')f.state.gates=[{run_id:'scenario-1',visit_sequence:1}];
+    if(invalid) {
+      await assert.rejects(settleUnpublishedReview(f.env,'run-1',f.lease,f.provider),/test_(review_settlement|unpublished_not_quiescent)/);
+      assert.equal(f.state.patches,0);
+      assert.equal(f.db.sqlite.prepare('SELECT COUNT(*) n FROM test_review_unpublished_settlements').get()!.n,0);
+    } else {
+      const saved=await settleUnpublishedReview(f.env,'run-1',f.lease,f.provider);
+      const proof=JSON.parse(await (await f.bucket.get(saved!.evidence_key))!.text());
+      const checked=proof.settledFacts.reviews.unsentLinear;
+      assert.equal(checked.length,1);
+      assert.equal(checked[0].kind,'scope_lookup_failed_before_move_candidate_unfinished');
+      assert.equal(checked[0].request.failure_json,failure);
+      assert.equal(checked[0].attempt.outcome,null);
+      assert.equal(f.state.reviewRows[0].linear_status,'moving');
+      assert.equal(f.db.sqlite.prepare('SELECT COUNT(*) n FROM test_attestations').get()!.n,0);
+      assert.equal(f.state.githubWrites,0);
+    }
+  } finally {f.db.close();}
 });

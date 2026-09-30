@@ -44,13 +44,14 @@ test('review service transport only moves its live test issue and preserves fail
   };}};}} as unknown as D1Database;
   const env={DB:binding,LINEAR_API_URL:'https://api.linear.app/graphql',
     LINEAR_APP_ACCESS_TOKEN:'private-token',IMPLEMENTATION_TEST_GITHUB_TOKEN:'reviewer-token'} as unknown as Env;
-  let team='team',writes=0,scopeReads=0;
+  let team='team',writes=0,scopeReads=0,scopeStatus=200;
   const transport=new SharedTestReviewProviderTransport(env,props,async(input,init)=>{
     assert.equal(String(input),env.LINEAR_API_URL);
     assert.equal((init?.headers as Record<string,string>).Authorization,'Bearer private-token');
     const value=JSON.parse(String(init?.body));
     if(value.query.includes('LeaseReviewIssueScope')) {
       scopeReads++;
+      if(scopeStatus!==200)return new Response('original upstream connection termination',{status:scopeStatus});
       return Response.json({data:{issue:{id:'test-issue',team:{id:team},project:{id:'project'}}}});
     }
     writes++;
@@ -61,6 +62,15 @@ test('review service transport only moves its live test issue and preserves fail
   }`)=>new Request(env.LINEAR_API_URL,{method:'POST',body:JSON.stringify({query,variables:{id,stateId:'work'}})});
   assert.equal((await transport.fetch(request())).status,200);
   assert.equal(writes,1);assert.equal(scopeReads,1);
+  scopeStatus=503;
+  const failedScope=await transport.fetch(request());
+  assert.equal(failedScope.status,503);
+  assert.match(await failedScope.text(),/before provider write/);
+  assert.equal(writes,1);
+  const originalScopeFault=db.prepare("SELECT failure_json FROM test_review_provider_requests WHERE failure_json LIKE '%original upstream%'").get();
+  assert.match(String(originalScopeFault?.failure_json),/test_review_scope_read_failed:503:original upstream connection termination/);
+  assert.match(String(originalScopeFault?.failure_json),/stack/);
+  scopeStatus=200;
   db.prepare("INSERT INTO test_review_scenarios VALUES (?,'s08','test-run','ready','now')").run(leaseId);
   db.prepare("INSERT INTO test_review_fault_injections VALUES ('reject',?,'s08','linear_reject_move','armed',NULL,'now',NULL)").run(leaseId);
   assert.match(await (await transport.fetch(request())).text(),/Labeled test injection/);
@@ -103,7 +113,7 @@ test('review service transport only moves its live test issue and preserves fail
   db.prepare('UPDATE test_environment SET fence=4').run();
   await assert.rejects(transport.fetch(request()),/provider_fenced/);
   await assert.rejects(scenarios.proofStatus(props),/scenario_fenced/);
-  assert.equal(scopeReads,3);
+  assert.equal(scopeReads,4);
 });
 
 test('test service assertions bind the lease, identity, method, and canonical body',async()=>{

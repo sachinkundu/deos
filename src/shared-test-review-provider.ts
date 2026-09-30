@@ -24,6 +24,14 @@ const issueState=compact(`query DeosIssueState($id: String!) {
   issue(id: $id) { state { id } delegate { id } assignee { id } updatedAt }
 }`);
 
+class LinearScopeReadError extends Error {
+  readonly status:number;
+  constructor(status:number,body:string) {
+    super(`test_review_scope_read_failed:${status}:${body}`);
+    this.status=status;
+  }
+}
+
 /** Outbound transport only. Candidate ReviewContinuation and DeosWorkflow keep
  * all review decisions, account checks, receipts, and gate transitions. */
 export class SharedTestReviewProviderTransport {
@@ -103,7 +111,7 @@ export class SharedTestReviewProviderTransport {
             issue(id:$id) { id team { id } project { id } }
           }`,variables:{id:live.issueId}}),redirect:'manual',signal:AbortSignal.timeout(20_000)});
         const raw=await response.text();
-        if(!response.ok)throw new Error(`test_review_scope_read_failed:${response.status}:${raw}`);
+        if(!response.ok)throw new LinearScopeReadError(response.status,raw);
         const result=JSON.parse(raw) as {errors?:unknown;data?:{issue?:{
           id:string;team:{id:string};project:{id:string}}}};
         const issue=result.data?.issue;
@@ -147,6 +155,11 @@ export class SharedTestReviewProviderTransport {
           .bind(detail,new Date().toISOString(),id).run();
       } catch(secondary) {throw new AggregateError([error,secondary],
         'test_review_provider_and_diagnostic_failed',{cause:error});}
+      // This lookup precedes the mutation. Its retained error proves that no
+      // move was sent, so the candidate may offer a retry of the Linear step.
+      if(error instanceof LinearScopeReadError)return Response.json({errors:[{
+        message:`Linear scope lookup failed before provider write (HTTP ${error.status}).`,
+      }]},{status:503});
       throw error;
     }
   }

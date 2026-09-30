@@ -1,5 +1,6 @@
 import {sharedTestReviewFixture} from './shared-test-review-profile.ts';
 import {checkedUnclearReplies} from './shared-test-unclear-reply-settlement.ts';
+import {checkedUnsentLinearMoves} from './shared-test-unsent-linear-settlement.ts';
 
 type Row=Record<string,unknown>;
 export type ReviewEvidenceQuery=<T>(sql:string)=>Promise<T[]>;
@@ -41,8 +42,13 @@ export async function settledReviewEffects(input:{env:Env;runId:string;leaseId:s
     pullNumber:fixture.scope.pullRequestNumber,fixtureHead:fixture.scope.candidateCommit,
     githubUserId:fixture.githubUserId,intents,parts,attempts,query,github});
   const checkedReply=(id:unknown)=>unclearReplies.some(r=>r.reviewId===id);
+  const unsentLinear=await checkedUnsentLinearMoves({db:env.DB,leaseId,
+    resourceId:fixture.resourceId,issueId:fixture.issueId,apiUrl:env.LINEAR_API_URL,
+    intents,attempts,query});
+  const checkedUnsent=(id:unknown)=>unsentLinear.some(r=>r.reviewId===id);
   if(parts.some(p=>!byId.has(p.review_id)) || attempts.some(a=>!byId.has(a.review_id) ||
-      !a.finished_at || !['succeeded','clearly_rejected','abandoned',...(checkedReply(a.review_id)?['unclear']:[])].includes(String(a.outcome))))
+      (!(checkedUnsent(a.review_id)&&a.step==='linear') &&
+        (!a.finished_at || !['succeeded','clearly_rejected','abandoned',...(checkedReply(a.review_id)?['unclear']:[])].includes(String(a.outcome))))))
     throw new Error('test_review_settlement_attempt_unsettled');
   for(const intent of intents) {
     const own=parts.filter(p=>p.review_id===intent.review_id);
@@ -62,7 +68,9 @@ export async function settledReviewEffects(input:{env:Env;runId:string;leaseId:s
       typeof intent.linear_operation_id==='string' &&
       attempts.some(a=>a.review_id===intent.review_id && a.step==='linear' && a.outcome==='succeeded');
     const unclear=checkedReply(intent.review_id);
-    if((!continued&&!rejected&&!unstarted&&!abandoned&&!held&&!unclear) || own.length===0 ||
+    const unsent=checkedUnsent(intent.review_id);
+    if((!continued&&!rejected&&!unstarted&&!abandoned&&!held&&!unclear&&!unsent) || own.length===0 ||
+        (unsent&&!own.some(p=>p.kind==='review_bundle'&&p.receipt_status==='done')) ||
         ((continued||held)&&!own.some(p=>p.kind==='review_bundle'&&['done','published_prior_intent'].includes(String(p.receipt_status)))) || own.some(p=>
         !['done','published_prior_intent',...(rejected?['failed_retryable','pending']:[]),...(unstarted?['pending']:[]),
           ...(abandoned?['abandoned','pending','failed_retryable']:[]),...(unclear?['host_check_required','pending']:[])].includes(String(p.receipt_status))) ||
@@ -107,6 +115,8 @@ export async function settledReviewEffects(input:{env:Env;runId:string;leaseId:s
   }
   const continued=intents.filter(i=>i.outcome==='continued');
   const gates=await query<Row>("SELECT * FROM human_gate_visits WHERE state<>'open' ORDER BY run_id,visit_sequence");
+  if(intents.some(i=>checkedUnsent(i.review_id)&&gates.some(g=>g.run_id===i.run_id&&g.visit_sequence===i.gate_visit_sequence)))
+    throw new Error('test_review_settlement_unsent_linear_gate_decided');
   if(intents.some(i=>checkedReply(i.review_id)&&gates.some(g=>g.run_id===i.run_id&&g.visit_sequence===i.gate_visit_sequence)))
     throw new Error('test_review_settlement_reply_gate_decided');
   const heldDeliveries=[];
@@ -154,5 +164,5 @@ export async function settledReviewEffects(input:{env:Env;runId:string;leaseId:s
     if(!receipt)throw new Error('test_review_settlement_signed_delivery_missing');
     deliveries.push({reviewId:intent.review_id,gate,receipt});
   }
-  return {kind:'settled_review_effects' as const,intents,parts,attempts,receipts,deliveries,heldDeliveries,unclearReplies};
+  return {kind:'settled_review_effects' as const,intents,parts,attempts,receipts,deliveries,heldDeliveries,unclearReplies,unsentLinear};
 }
