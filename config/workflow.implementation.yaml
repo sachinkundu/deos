@@ -2,7 +2,7 @@ apiVersion: deos.dev/v1alpha1
 kind: DeliveryWorkflow
 metadata:
   name: implementation
-  version: 42
+  version: 45
 spec:
   implementationPolicy:
     uiPaths:
@@ -19,6 +19,7 @@ spec:
     providerPaths:
       [
         src/deos/ingress.py,
+        src/deos/,
         src/deos/worker.py,
         src/entry.py,
         src/linear-,
@@ -307,6 +308,18 @@ spec:
       permissionProfile: repository_write
       providerAccess: []
       operation: { kind: openspec, instruction: /opsx:apply }
+    shared_test_agent:
+      promptFile: prompts/shared-test-demo.md
+      inputs: [shared_test_context]
+      context: []
+      resultSchema: schemas/agent-result-v1.json
+      requiredOutputs: [transcript.jsonl, result.json, patch.diff, validation.txt, provider-references.json, showboat.md]
+      agentRole: author
+      modelProvider: codex
+      model: gpt-5.6-sol
+      reasoning: high
+      permissionProfile: review_read_only
+      providerAccess: []
   nodes:
     claim_issue:
       type: system_action
@@ -605,7 +618,7 @@ spec:
       job: implementation_build
       edges:
         {
-          completed: implementation_proof_check,
+          completed: implementation_test_branch_write,
           retry_fresh: implementation_build,
           needs_human: implementation_question,
           failed: implementation_failed,
@@ -613,6 +626,27 @@ spec:
           manual_reconciliation_required: implementation_manual_reconciliation,
           base_changed: implementation_rebase,
         }
+    implementation_test_branch_write:
+      type: system_action
+      action: implementation.write_branch
+      edges: { completed: shared_test_decide, failed: implementation_failed, base_changed: implementation_rebase }
+    shared_test_decide:
+      type: system_action
+      action: implementation.shared_test_decide
+      edges:
+        { test_required: implementation_draft_publish,
+          test_not_required: implementation_proof_check,
+          failed: implementation_failed, base_changed: implementation_rebase }
+    implementation_draft_publish:
+      type: system_action
+      action: implementation.draft_publish
+      edges: { completed: shared_test_demo, failed: implementation_publication_question,
+        base_changed: implementation_rebase }
+    shared_test_demo:
+      type: system_action
+      action: implementation.shared_test_demo
+      edges: { completed: implementation_proof_check, waiting: shared_test_demo,
+        failed: implementation_failed, base_changed: implementation_rebase }
     implementation_clarification_wait:
       type: human_gate
       linearState: Human Review

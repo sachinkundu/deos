@@ -1,0 +1,12 @@
+SELECT state,owner_run_id,owner_lease_id,last_lease_id,fence,revision,updated_at FROM test_environment;
+SELECT lease_id,state,closed_at FROM test_leases WHERE lease_id='cab6f898b4378c58dda63ee3fedbe8c598e595bb9d339b3a9932fe2232f1f7a5';
+SELECT attempt_id,state,result_class,cleanup_state,manifest_id,ended_at FROM agent_attempts WHERE attempt_id='df0c12f0-b9a6-4f48-95c3-44e8557a61d6';
+SELECT COUNT(*) AS active_attempts FROM agent_attempts WHERE state IN ('pending','starting','running','collecting');
+SELECT kind,plan_state,cleanup_state,absent_at FROM test_resources WHERE lease_id='cab6f898b4378c58dda63ee3fedbe8c598e595bb9d339b3a9932fe2232f1f7a5' ORDER BY kind,resource_id;
+SELECT remove_state,read_state,COUNT(*) AS resource_count FROM test_cleanup_checks WHERE lease_id='cab6f898b4378c58dda63ee3fedbe8c598e595bb9d339b3a9932fe2232f1f7a5' GROUP BY remove_state,read_state;
+SELECT abort_kind,closed_at,cleanup_sha256,absence_sha256,failure_evidence_sha256,receipt_json FROM test_lease_aborts WHERE lease_id='cab6f898b4378c58dda63ee3fedbe8c598e595bb9d339b3a9932fe2232f1f7a5';
+SELECT COUNT(*) AS complete_test_attestations FROM test_attestations WHERE lease_id='cab6f898b4378c58dda63ee3fedbe8c598e595bb9d339b3a9932fe2232f1f7a5' AND state='complete';
+SELECT state,COUNT(*) AS queued_requests FROM test_lease_requests WHERE state='waiting' GROUP BY state;
+SELECT state,COUNT(*) AS browser_sessions FROM test_browser_sessions WHERE lease_id='cab6f898b4378c58dda63ee3fedbe8c598e595bb9d339b3a9932fe2232f1f7a5' GROUP BY state;
+SELECT COUNT(*) AS live_app_sessions FROM test_app_sessions WHERE lease_id='cab6f898b4378c58dda63ee3fedbe8c598e595bb9d339b3a9932fe2232f1f7a5' AND revoked_at IS NULL;
+SELECT COUNT(*) AS live_access_identities FROM test_access_identities WHERE lease_id='cab6f898b4378c58dda63ee3fedbe8c598e595bb9d339b3a9932fe2232f1f7a5' AND absent_at IS NULL;

@@ -1,0 +1,185 @@
+import {LinearCapabilityAdapter} from './linear-capability.ts';
+import type {LinearTestIssue} from './linear-capability.ts';
+import {SharedTestMarkerStore} from './shared-test-marker-store.ts';
+import {SharedTestCloseStore,requiredProofKinds} from './shared-test-close.ts';
+import {SharedTestResourceCleanup} from './shared-test-resource-cleanup.ts';
+import {SharedTestCloudflareStores} from './shared-test-cloudflare-stores.ts';
+import {SharedTestCloudflareWorkers} from './shared-test-cloudflare-workers.ts';
+import {SharedTestBrowserCleanup} from './shared-test-browser-cleanup.ts';
+import {SharedTestBrowserStore} from './shared-test-browser-store.ts';
+import {CloudflareTestBrowserProvider} from './shared-test-browser-provider.ts';
+import {purgeSharedTestGitHubSessions} from './shared-test-github-broker.ts';
+import {cleanupSharedTestReviewFixtures} from './shared-test-review-fixture.ts';
+import {SharedTestReviewRuntime} from './shared-test-review-runtime.ts';
+
+type RecoveryEnv=Pick<Env,'DB'|'LINEAR_API_URL'|'LINEAR_APP_ACCESS_TOKEN'> & {
+  TEST_MARKER_KEY_V1?:string;
+  IMPLEMENTATION_ENVIRONMENT_ACCOUNT_ID?:string;
+  IMPLEMENTATION_ENVIRONMENT_TOKEN?:string;
+  SHARED_TEST_ZONE_ID?:string;
+  IMPLEMENTATION_BROWSER?:Env['IMPLEMENTATION_BROWSER'];
+};
+
+interface Owner {
+  state:string;
+  owner_run_id:string|null;
+  owner_lease_id:string|null;
+  fence:number;
+  create_fence:number|null;
+}
+
+interface Marker {
+  expectation_id:string;
+  run_id:string;
+  lease_id:string;
+  fence:number;
+  task_id:string;
+  team_id:string;
+}
+
+/** Resume cleanup from D1; the original Workflow and Sandbox are not needed. */
+export class SharedTestRecovery {
+  readonly env:RecoveryEnv;
+  readonly linear?:{
+    readTestIssue(id:string):Promise<LinearTestIssue>;
+    updateTestIssueDescription(id:string,description:string):Promise<LinearTestIssue>;
+    testActorId():Promise<string>;
+  };
+  constructor(env:RecoveryEnv,linear?:SharedTestRecovery['linear']) {
+    this.env=env;this.linear=linear;
+  }
+
+  async resume():Promise<void> {
+    const owner=await this.env.DB.prepare(`SELECT e.state,e.owner_run_id,e.owner_lease_id,
+      e.fence,l.fence AS create_fence FROM test_environment e LEFT JOIN test_leases l
+      ON l.lease_id=e.owner_lease_id WHERE e.site_id=1`).first<Owner>();
+    if (!owner || !['quiescing','cleaning'].includes(owner.state) ||
+        !owner.owner_run_id || !owner.owner_lease_id) return;
+    // A blocked-demo close owns its evidence capture until the abort receipt exists.
+    // Do not remove its browser or credentials while that capture is in progress.
+    const evidencePending=await this.env.DB.prepare(`SELECT 1 AS pending FROM test_leases l
+      JOIN agent_attempts a ON a.attempt_id=l.attempt_id AND a.run_id=l.run_id
+      WHERE l.lease_id=? AND l.run_id=? AND a.node_id='shared_test_demo'
+        AND a.state IN ('blocked','failed','interrupted','absolute_timeout') AND NOT EXISTS
+          (SELECT 1 FROM test_lease_aborts x WHERE x.lease_id=l.lease_id AND x.run_id=l.run_id)`)
+      .bind(owner.owner_lease_id,owner.owner_run_id).first<{pending:number}>();
+    if(evidencePending)return;
+    // The Access service token is shared infrastructure. This row is the
+    // lease-specific right to use it, so revoke it before provider cleanup.
+    const now=new Date().toISOString();
+    await this.env.DB.prepare(`UPDATE test_access_identities SET revoked_at=?
+      WHERE run_id=? AND lease_id=? AND revoked_at IS NULL`).bind(now,
+        owner.owner_run_id,owner.owner_lease_id).run();
+    await this.env.DB.prepare(`UPDATE test_app_sessions SET revoked_at=?
+      WHERE run_id=? AND lease_id=? AND revoked_at IS NULL`).bind(now,
+        owner.owner_run_id,owner.owner_lease_id).run();
+    await purgeSharedTestGitHubSessions(this.env.DB,
+      owner.owner_run_id,owner.owner_lease_id);
+    await this.env.DB.prepare(`UPDATE test_access_identities SET absent_at=?
+      WHERE run_id=? AND lease_id=? AND revoked_at IS NOT NULL AND absent_at IS NULL
+        AND NOT EXISTS (SELECT 1 FROM test_app_sessions s
+          WHERE s.access_identity_id=test_access_identities.identity_id
+            AND s.revoked_at IS NULL)`).bind(now,
+        owner.owner_run_id,owner.owner_lease_id).run();
+    const liveIdentity=await this.env.DB.prepare(`SELECT identity_id FROM test_access_identities
+      WHERE run_id=? AND lease_id=? AND (revoked_at IS NULL OR absent_at IS NULL)
+      LIMIT 1`).bind(owner.owner_run_id,owner.owner_lease_id)
+      .first<{identity_id:string}>();
+    if(liveIdentity)throw new Error('shared_test_access_identity_remains');
+    const browsers=await this.env.DB.prepare(`SELECT 1 AS exists_one
+      FROM test_browser_sessions WHERE lease_id=? AND run_id=?
+        AND state<>'absent' LIMIT 1`)
+      .bind(owner.owner_lease_id,owner.owner_run_id)
+      .first<{exists_one:number}>();
+    if(browsers) {
+      if(!this.env.IMPLEMENTATION_BROWSER)
+        throw new Error('shared_test_browser_cleanup_unconfigured');
+      await new SharedTestBrowserCleanup(new SharedTestBrowserStore(this.env.DB),
+        new CloudflareTestBrowserProvider(this.env.IMPLEMENTATION_BROWSER))
+        .resume(owner.owner_lease_id,owner.owner_run_id);
+    }
+    const markers=(await this.env.DB.prepare(`SELECT x.expectation_id,x.run_id,x.lease_id,
+      x.fence,x.task_id,x.team_id FROM test_expected_events x
+      WHERE x.run_id=? AND x.lease_id=? AND NOT EXISTS (
+        SELECT 1 FROM test_operations o WHERE o.work_id='test-marker:' ||
+          x.expectation_id || ':remove' AND o.run_id=x.run_id AND o.lease_id=x.lease_id
+          AND o.kind='linear_marker_remove' AND o.state IN ('done','absent'))
+      ORDER BY x.created_at,x.expectation_id`)
+      .bind(owner.owner_run_id,owner.owner_lease_id).all<Marker>()).results;
+    if (markers.length && !this.env.TEST_MARKER_KEY_V1)
+      throw new Error('shared_test_marker_cleanup_key_missing');
+    if (markers.length) {
+      const linear=this.linear??new LinearCapabilityAdapter(this.env.LINEAR_API_URL,
+        this.env.LINEAR_APP_ACCESS_TOKEN);
+      const store=new SharedTestMarkerStore(this.env.DB,linear,this.env.TEST_MARKER_KEY_V1!);
+      for (const marker of markers) {
+        await store.disableAndRemove({expectationId:marker.expectation_id,
+          runId:marker.run_id,leaseId:marker.lease_id,taskId:marker.task_id,
+          teamId:marker.team_id,fence:marker.fence,cleanupFence:owner.fence});
+      }
+    }
+    if(owner.state==='quiescing') {
+      const failedSetup=await this.env.DB.prepare(`SELECT 1 AS ready
+        FROM test_lease_aborts WHERE lease_id=? AND run_id=?
+          AND proof_read_at IS NOT NULL AND closed_at IS NULL`)
+        .bind(owner.owner_lease_id,owner.owner_run_id).first<{ready:number}>();
+      if(failedSetup?.ready===1) {
+        await new SharedTestCloseStore(this.env.DB).cleaningFailedSetup(
+          owner.owner_run_id,owner.owner_lease_id,owner.fence);
+      } else {
+      const placeholders=requiredProofKinds.map(()=>'?').join(',');
+      const proof=await this.env.DB.prepare(`SELECT COUNT(DISTINCT kind) AS ready
+        FROM test_proof_items WHERE lease_id=? AND kind IN (${placeholders})
+          AND classification='public_safe' AND sanitizer_result='passed'
+          AND public_sha256 IS NOT NULL AND public_url IS NOT NULL
+          AND body_marker IS NOT NULL AND read_at IS NOT NULL
+          AND projected_at IS NOT NULL`)
+        .bind(owner.owner_lease_id,...requiredProofKinds)
+        .first<{ready:number}>();
+      if(proof?.ready!==requiredProofKinds.length)return;
+      await new SharedTestCloseStore(this.env.DB).cleaning(owner.owner_run_id,
+        owner.owner_lease_id,owner.fence);
+      }
+    }
+    if(!owner.create_fence || !this.env.IMPLEMENTATION_ENVIRONMENT_ACCOUNT_ID ||
+        !this.env.IMPLEMENTATION_ENVIRONMENT_TOKEN || !this.env.SHARED_TEST_ZONE_ID)
+      throw new Error('shared_test_cleanup_provider_unconfigured');
+    const account=this.env.IMPLEMENTATION_ENVIRONMENT_ACCOUNT_ID;
+    const token=this.env.IMPLEMENTATION_ENVIRONMENT_TOKEN;
+    const cleanup=new SharedTestResourceCleanup(this.env.DB,
+      new SharedTestCloudflareWorkers(this.env.DB,account,
+        this.env.SHARED_TEST_ZONE_ID,token),
+      new SharedTestCloudflareStores(account,token),
+      async input=>{
+        await new SharedTestReviewRuntime(this.env as Env).cleanup(input);
+        await cleanupSharedTestReviewFixtures(this.env as Env,input);
+      });
+    await cleanup.resume({runId:owner.owner_run_id,leaseId:owner.owner_lease_id,
+      createFence:owner.create_fence,cleanupFence:owner.fence});
+    const remaining=await this.env.DB.prepare(`SELECT COUNT(*) AS count FROM test_resources
+      WHERE lease_id=? AND run_id=? AND plan_state<>'absent'`)
+      .bind(owner.owner_lease_id,owner.owner_run_id).first<{count:number}>();
+    if(remaining?.count!==0)
+      throw new Error('shared_test_cleanup_resources_remain');
+    const blocked=await this.env.DB.prepare(`SELECT 1 AS blocked FROM test_access_identities
+      WHERE lease_id=? AND absent_at IS NULL LIMIT 1`)
+      .bind(owner.owner_lease_id).first<{blocked:number}>();
+    if(!blocked) {
+      const failedSetup=await this.env.DB.prepare(`SELECT 1 AS ready
+        FROM test_lease_aborts WHERE lease_id=? AND run_id=?
+          AND proof_read_at IS NOT NULL AND closed_at IS NULL`)
+        .bind(owner.owner_lease_id,owner.owner_run_id).first<{ready:number}>();
+      if(failedSetup?.ready===1) {
+        await new SharedTestCloseStore(this.env.DB).abortFailedSetup(
+          owner.owner_run_id,owner.owner_lease_id,owner.fence);
+        return;
+      }
+      const attestation=await this.env.DB.prepare(`SELECT 1 AS ready FROM test_attestations
+        WHERE lease_id=? AND run_id=? AND state='observed' LIMIT 1`)
+        .bind(owner.owner_lease_id,owner.owner_run_id).first<{ready:number}>();
+      if(attestation?.ready===1)
+        await new SharedTestCloseStore(this.env.DB).close(owner.owner_run_id,
+          owner.owner_lease_id,owner.fence);
+    }
+  }
+}

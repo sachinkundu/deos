@@ -19,6 +19,7 @@ from deos.ingress import (
     route_event_proof,
 )
 from deos.ports import ApplicationEvent, Delivery, DeliveryClassification
+from deos.shared_test_route import SharedTestEventRouter
 from deos.telemetry import Observation, build_observation, workflow_identity
 from worker_telemetry import emit_observation
 
@@ -63,6 +64,21 @@ class Default(WorkerEntrypoint):
         now = datetime.now(UTC)
         try:
             acl.verify(body, headers, now)
+            payload: object = json.loads(cast(bytes, body))
+            if not isinstance(payload, dict):
+                raise InvalidWebhook("payload must be an object")
+            router = SharedTestEventRouter(
+                self.env.DB, self._send_test,
+                (getattr(self.env, "TEST_MARKER_KEY_V1", "") or "").encode(),
+                self.env.TEST_MARKER_RESOLVER.resolve,
+            )
+            delivery_id = headers["linear-delivery"]
+            if delivery_id and await router.route(
+                cast(dict[str, Any], payload), delivery_id,
+                int(headers["linear-timestamp"]), now, hashlib.sha256(body).hexdigest(),
+            ):
+                self.ctx.waitUntil(router.dispatch(delivery_id))
+                return Response("accepted test delivery", status=200)
             if headers["linear-delivery"]:
                 saved = (
                     await self.env.DB.prepare(
@@ -78,7 +94,23 @@ class Default(WorkerEntrypoint):
                         dispatch(self.env.DB, self._send, headers["linear-delivery"])
                     )
                     return Response("duplicate", status=200)
-            payload: object = json.loads(cast(bytes, body))
+            # A saved team test task may have no project. The exact test route
+            # above has first claim; other projectless Issue events are ignored.
+            data = cast(dict[str, Any], payload).get("data")
+            if (
+                cast(dict[str, Any], payload).get("type") == "Issue"
+                and isinstance(data, dict)
+                and isinstance(data.get("id"), str)
+                and isinstance(data.get("teamId"), str)
+                and not isinstance(data.get("project"), dict)
+            ):
+                if delivery_id:
+                    await self.env.DB.prepare(
+                        """INSERT OR IGNORE INTO deliveries
+                          (delivery_id,payload_hash,received_at,classification)
+                          VALUES (?,?,?,'irrelevant')"""
+                    ).bind(delivery_id, hashlib.sha256(body).hexdigest(), now.isoformat()).run()
+                return Response("ignored", status=200)
             comment_issue: dict[str, Any] | None = None
             if isinstance(payload, dict) and cast(dict[str, Any], payload).get("type") == "Comment":
                 comment_data: object = cast(dict[str, Any], payload).get("data")
@@ -181,6 +213,11 @@ class Default(WorkerEntrypoint):
         test_event = _implementation_test_event_statement(self.env.DB, event, delivery)
         if test_event is not None:
             statements.append(test_event)
+        lease_test_event = _implementation_test_event_statement(
+            self.env.DB, event, delivery, shared_lease=True
+        )
+        if lease_test_event is not None:
+            statements.append(lease_test_event)
         try:
             await self.env.DB.batch(statements)
         except Exception:
@@ -202,8 +239,16 @@ class Default(WorkerEntrypoint):
     async def _send(self, message: object) -> None:
         await self.env.QUEUE.send(_javascript_value(message), contentType="json")
 
+    async def _send_test(self, message: object) -> None:
+        await self.env.TEST_QUEUE.send(_javascript_value(message), contentType="json")
+
     async def scheduled(self, controller: Any, env: Any, ctx: Any) -> None:
         await replay(self.env.DB, self._send)
+        router = SharedTestEventRouter(
+            self.env.DB, self._send_test,
+            (getattr(self.env, "TEST_MARKER_KEY_V1", "") or "").encode(),
+        )
+        await router.replay()
 
 
 def _javascript_value(value: object):
@@ -223,19 +268,23 @@ async def _record_implementation_test_event(
 
 
 def _implementation_test_event_statement(
-    database: Any, event: ApplicationEvent, delivery: Delivery
+    database: Any, event: ApplicationEvent, delivery: Delivery, *, shared_lease: bool = False
 ) -> Any:
     """Capture only verified provider state changes for a reserved test issue."""
     from pyodide.ffi import jsnull
 
     if event.event_kind != "Issue.update" or not event.actor_id or not event.state_id:
         return None
+    events_table = "test_review_fixture_events" if shared_lease else "implementation_test_events"
+    resources_table = "test_review_fixtures" if shared_lease else "implementation_resources"
+    actor_column = ", actor_type" if shared_lease else ""
+    actor_value = ", ?" if shared_lease else ""
     return (
         database.prepare(
-            """INSERT OR IGNORE INTO implementation_test_events
+            f"""INSERT OR IGNORE INTO {events_table}
         (delivery_id, resource_id, issue_id, actor_id, from_state_id, to_state_id,
-         provider_time, payload_sha, received_at)
-        SELECT ?, resource_id, ?, ?, ?, ?, ?, ?, ? FROM implementation_resources
+         provider_time, payload_sha, received_at{actor_column})
+        SELECT ?, resource_id, ?, ?, ?, ?, ?, ?, ?{actor_value} FROM {resources_table}
         WHERE kind='safe_test' AND provider='github-linear-review-v1' AND provider_resource_id=?"""
         )
         .bind(
@@ -247,6 +296,7 @@ def _implementation_test_event_statement(
             event.occurred_at.isoformat(),
             delivery.payload_hash,
             delivery.received_at.isoformat(),
+            *([event.actor_type if event.actor_type else jsnull] if shared_lease else []),
             event.issue_id,
         )
     )

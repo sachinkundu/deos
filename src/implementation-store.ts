@@ -204,11 +204,12 @@ export class ImplementationStore {
       new TextDecoder().decode(await this.readBytes(key, sha)),
     ) as T;
   }
-  run(runId: string) {
-    return this.db
+  async run(runId: string):Promise<ImplementationRun|null> {
+    const row = await this.db
       .prepare("SELECT * FROM implementation_runs WHERE run_id = ?")
       .bind(runId)
-      .first<ImplementationRun>();
+      .first<ImplementationRun & {pr_branch:string|null}>();
+    return row ? {...row,branch:row.pr_branch ?? row.branch} : null;
   }
   async requireRun(runId: string) {
     const run = await this.run(runId);

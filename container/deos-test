@@ -1,0 +1,43 @@
+#!/usr/bin/env node
+import {readFile,writeFile,rename} from 'node:fs/promises';
+
+const [kind,path,extra]=process.argv.slice(2);
+if(!['browser','marker','review'].includes(kind) || !path?.startsWith('/deos/output/') || extra)
+  throw new Error('Usage: deos-test browser|marker|review /deos/output/request.json');
+const raw=await readFile(path,'utf8');
+if(raw.length>20_000)throw new Error('Test capability request is too large');
+const value=JSON.parse(raw);
+if(!value || typeof value!=='object' || Array.isArray(value))
+  throw new Error('Test capability request must be an object');
+const base=process.env.DEOS_CAPABILITY_URL;
+let token=process.env.DEOS_CAPABILITY_TOKEN;
+const attempt=process.env.DEOS_ATTEMPT_ID;
+if(!base || !token || !attempt)throw new Error('Test capability is unavailable');
+const tokenPath='/deos/run/shared-test-capability.json';
+try {
+  const saved=JSON.parse(await readFile(tokenPath,'utf8'));
+  if(saved.attempt!==attempt || typeof saved.token!=='string')
+    throw new Error('Saved test capability belongs to another attempt');
+  token=saved.token;
+} catch(error) {if(error.code!=='ENOENT')throw error;}
+// Renew while the old short-lived grant is valid. Never print either token.
+const renewal=await fetch(`${base}/shared-test-renew`,{
+  method:'POST',headers:{Authorization:`Bearer ${token}`,
+    'Content-Type':'application/json','Deos-Attempt':attempt},body:'{"version":1}',
+});
+if(!renewal.ok) {
+  process.stdout.write(await renewal.text());process.exit(1);
+}
+const next=await renewal.json();
+if(typeof next.token!=='string' || !next.token)throw new Error('Test capability renewal reply is invalid');
+token=next.token;
+const temporary=`${tokenPath}.${process.pid}.tmp`;
+await writeFile(temporary,JSON.stringify({attempt,token}),{mode:0o600,flag:'wx'});
+await rename(temporary,tokenPath);
+const response=await fetch(`${base}/shared-test-${kind}`,{
+  method:'POST',headers:{Authorization:`Bearer ${token}`,
+    'Content-Type':'application/json','Deos-Attempt':attempt},body:raw,
+});
+const body=await response.text();
+process.stdout.write(body);
+process.exitCode=response.ok?0:1;

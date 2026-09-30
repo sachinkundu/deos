@@ -65,17 +65,22 @@ def publish_raw(service_name, source_commit, build_digest, raw):
     ) or not re.fullmatch(r"[a-f0-9]{64}", build_digest):
         raise ValueError("Invalid shared test build identity")
     key = f"shared-test/builds/{service_name}/{source_commit}/{build_digest}.json"
-    with tempfile.TemporaryDirectory(prefix="deos-shared-test-build-") as directory:
-        upload = Path(directory) / "upload.json"
-        download = Path(directory) / "readback.json"
-        upload.write_bytes(raw)
-        run("npx", "--no-install", "wrangler", "r2", "object", "put",
-            f"{BUCKET}/{key}", "--file", str(upload), "--remote",
-            "--content-type", "application/json")
-        run("npx", "--no-install", "wrangler", "r2", "object", "get",
-            f"{BUCKET}/{key}", "--file", str(download), "--remote")
-        if hashlib.sha256(download.read_bytes()).digest() != hashlib.sha256(raw).digest():
-            raise ValueError("Shared test build R2 readback differs from upload")
+    from shared_test_r2_upload import enabled
+    from shared_test_r2_upload import publish as publish_s3
+    if enabled():
+        publish_s3(key, raw, "application/json")
+    else:
+        with tempfile.TemporaryDirectory(prefix="deos-shared-test-build-") as directory:
+            upload = Path(directory) / "upload.json"
+            download = Path(directory) / "readback.json"
+            upload.write_bytes(raw)
+            run("npx", "--no-install", "wrangler", "r2", "object", "put",
+                f"{BUCKET}/{key}", "--file", str(upload), "--remote",
+                "--content-type", "application/json")
+            run("npx", "--no-install", "wrangler", "r2", "object", "get",
+                f"{BUCKET}/{key}", "--file", str(download), "--remote")
+            if hashlib.sha256(download.read_bytes()).digest() != hashlib.sha256(raw).digest():
+                raise ValueError("Shared test build R2 readback differs from upload")
     return key
 
 

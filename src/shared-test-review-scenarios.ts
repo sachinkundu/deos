@@ -1,0 +1,254 @@
+import {SharedTestReviewRuntime} from './shared-test-review-runtime.ts';
+import {sharedTestReviewFixture,sharedTestReviewProfile} from './shared-test-review-profile.ts';
+import {sharedTestReviewKey} from './shared-test-review-signing.ts';
+import {ImplementationProviderTest} from './implementation-provider-test.ts';
+import type {SharedTestReviewBinding} from './shared-test-review-provider.ts';
+import type {CapabilityClaims} from './capability-auth.ts';
+import {armSharedReviewFault,sharedReviewFaultKinds,type SharedReviewFaultKind} from './shared-test-review-faults.ts';
+import {SharedTestFailureStore} from './shared-test-failures.ts';
+import {sha256Hex} from './implementation-hash.ts';
+
+/** Bounded fixture operations. Callers cannot choose a database, provider
+ * identity, query, event payload, workflow definition, or external target. */
+export class SharedTestReviewScenarios {
+  readonly env:Env;
+  readonly fetcher:typeof fetch;
+  constructor(env:Env,fetcher:typeof fetch=globalThis.fetch.bind(globalThis)) {
+    this.env=env;this.fetcher=fetcher;
+  }
+
+  async live(binding:SharedTestReviewBinding) {
+    const row=await this.env.DB.prepare(`SELECT 1 AS allowed FROM test_environment e
+      JOIN test_leases l ON l.lease_id=e.owner_lease_id WHERE e.site_id=1 AND e.state='active'
+      AND e.owner_run_id=? AND e.owner_lease_id=? AND e.fence=? AND e.heartbeat_due_at>?
+      AND l.state='active' AND l.fence=e.fence AND l.attempt_id=?`)
+      .bind(binding.runId,binding.leaseId,binding.fence,new Date().toISOString(),binding.attemptId)
+      .first<{allowed:number}>();
+    if(row?.allowed!==1)throw new Error('test_review_scenario_fenced');
+    return sharedTestReviewFixture(this.env.DB,{run_id:binding.runId,attempt_id:binding.attemptId});
+  }
+
+  async control(binding:SharedTestReviewBinding,method:string,payload:Record<string,unknown>={}) {
+    await this.live(binding);
+    const runtime=await new SharedTestReviewRuntime(this.env,this.fetcher).saved(binding.leaseId);
+    if(runtime.runId!==binding.runId || runtime.attemptId!==binding.attemptId || runtime.fence!==binding.fence)
+      throw new Error('test_review_scenario_runtime_changed');
+    const raw=JSON.stringify({...payload,method,leaseId:binding.leaseId,at:Date.now(),nonce:crypto.randomUUID()});
+    const key=await crypto.subtle.importKey('raw',new TextEncoder().encode(await sharedTestReviewKey(
+      this.env.TEST_MARKER_KEY_V1,binding.leaseId,binding.fence)),{name:'HMAC',hash:'SHA-256'},false,['sign']);
+    const signature=[...new Uint8Array(await crypto.subtle.sign('HMAC',key,
+      new TextEncoder().encode('lease-test-control-v1:'+raw)))].map(n=>n.toString(16).padStart(2,'0')).join('');
+    const response=await this.fetcher(`https://${runtime.hostname}/__deos_test_control`,{
+      method:'POST',body:raw,headers:{'Content-Type':'application/json','X-Deos-Test-Control':signature,
+        'CF-Access-Client-Id':this.env.TEST_APP_SERVICE_CLIENT_ID,
+        'CF-Access-Client-Secret':this.env.TEST_APP_SERVICE_CLIENT_SECRET},
+      redirect:'manual',signal:AbortSignal.timeout(30_000)});
+    const text=await response.text();
+    if(!response.ok)throw new Error(`test_review_control_failed:${response.status}:${text}`);
+    return JSON.parse(text) as Record<string,unknown>;
+  }
+
+  async provider(binding:SharedTestReviewBinding,value:Record<string,unknown>) {
+    const fixture=await this.live(binding),{row}=await sharedTestReviewProfile(this.env.DB,binding.runId);
+    return new ImplementationProviderTest(this.env,async()=>{await this.live(binding);},binding.leaseId)
+      .call(binding.runId,binding.attemptId,[row.adapter_binding],{...value,resourceId:fixture.resourceId},row.run_id);
+  }
+
+  async recordSetupFailure(binding:SharedTestReviewBinding,scenario:string,error:unknown) {
+    try {
+      await new SharedTestFailureStore(this.env.DB,this.env.ARTIFACTS).record({
+        ...binding,phase:'scenario_setup',workId:scenario,operation:'fixture.reset',
+        safeCode:'test_review_fixture_reset_failed'},error);
+    } catch (diagnostic) {
+      throw new AggregateError([error,diagnostic],'Fixture reset and diagnostic recording failed',{cause:error});
+    }
+  }
+
+  /** Reset only the disposable issue after the previous candidate gate settles.
+   * Each uncertain write keeps its ledger entry. Read back before a bounded,
+   * separately recorded attempt to set the same setup state. This never retries
+   * an app review publication or supplies a successful provider receipt for it. */
+  async resetFixture(binding:SharedTestReviewBinding,scenario:string) {
+    const fixture=await this.live(binding);
+    for(let attempt=0;attempt<3;attempt++) {
+      const operationId=`scenario-${scenario}-initial-state${attempt?`-retry-${attempt}`:''}`;
+      try {
+        await this.provider(binding,{operation:'linear.move',operationId,
+          issueId:fixture.issueId,stateId:fixture.profile.states.review});
+        return;
+      } catch(error) {
+        if(!(error instanceof Error) || error.message!=='provider_test_operation_uncertain') {
+          await this.recordSetupFailure(binding,scenario,error);
+          throw error;
+        }
+        // A running operation is not uncertain and must never enter this path.
+        const previous=await this.env.DB.prepare(`SELECT state FROM test_review_fixture_operations
+          WHERE operation_id=? AND resource_id=?`)
+          .bind(`${fixture.resourceId}:${operationId}`,fixture.resourceId).first<{state:string}>();
+        if(previous?.state!=='uncertain')throw error;
+        const observed=await this.provider(binding,{operation:'linear.read'}) as {
+          response:{issue:{id:string;state:{id:string}}}};
+        if(observed.response?.issue?.id!==fixture.issueId)
+          throw new Error('test_review_reset_issue_changed',{cause:error});
+        const body=JSON.stringify({kind:'fixture_setup_readback',leaseId:binding.leaseId,
+          scenario,operationId,observedAt:new Date().toISOString(),response:observed.response});
+        const digest=await sha256Hex(body);
+        const key=`shared-test/review-setup/${binding.leaseId}/${scenario}/${digest}.json`;
+        await this.env.ARTIFACTS.put(key,body,{httpMetadata:{contentType:'application/json'}});
+        const saved=await this.env.ARTIFACTS.get(key);
+        if(!saved || await sha256Hex(await saved.text())!==digest)
+          throw new Error('test_review_reset_readback_retention_failed',{cause:error});
+        if(observed.response.issue.state.id===fixture.profile.states.review)return;
+        if(attempt===2)throw new Error('test_review_reset_retries_exhausted',{cause:error});
+        if(![fixture.profile.states.work,fixture.profile.states.merge].includes(observed.response.issue.state.id))
+          throw new Error('test_review_reset_unexpected_state',{cause:error});
+        await this.control(binding,'check_prepare',{scenario});
+      }
+    }
+  }
+
+  async prepare(binding:SharedTestReviewBinding,scenario:string) {
+    if(!/^s(?:0[1-9]|1[0-2])(?:-[a-z0-9-]{1,40})?$/.test(scenario))throw new Error('test_review_scenario_invalid');
+    await this.live(binding);
+    const before=await this.env.DB.prepare('SELECT * FROM test_review_scenarios WHERE lease_id=? AND scenario_id=?')
+      .bind(binding.leaseId,scenario).first<{state:string;scenario_run_id:string|null}>();
+    if(before?.state==='retired')throw new Error('test_review_scenario_already_retired');
+    if(before?.state==='ready')return this.control(binding,'evidence',{scenario});
+    // Keep the current delivery route, injections and provider state until the
+    // candidate confirms that its review and restoration work has settled.
+    await this.control(binding,'check_prepare',{scenario});
+    if(!before)await this.env.DB.batch([
+      this.env.DB.prepare("UPDATE test_review_fault_injections SET state='cleared',used_at=? WHERE lease_id=? AND state='armed'").bind(new Date().toISOString(),binding.leaseId),
+      this.env.DB.prepare("INSERT OR IGNORE INTO test_review_scenarios (lease_id,scenario_id,state) VALUES (?,?,'preparing')").bind(binding.leaseId,scenario),
+    ]);
+    const preparing=await this.env.DB.prepare("SELECT scenario_id FROM test_review_scenarios WHERE lease_id=? AND state='preparing'")
+      .bind(binding.leaseId).first<{scenario_id:string}>();
+    if(preparing?.scenario_id!==scenario)throw new Error(`test_review_scenario_preparing:${preparing?.scenario_id??'changed'}`);
+    await this.resetFixture(binding,scenario);
+    const pull=await this.provider(binding,{operation:'github.read',path:''}) as {response:unknown};
+    const value=await this.control(binding,'prepare',{scenario,pull:pull.response});
+    if(typeof value.runId!=='string')throw new Error('test_review_scenario_run_missing');
+    await this.env.DB.batch([
+      this.env.DB.prepare("UPDATE test_review_scenarios SET state='retired' WHERE lease_id=? AND state='ready'").bind(binding.leaseId),
+      this.env.DB.prepare(`UPDATE test_review_scenarios SET state='ready',scenario_run_id=?,prepared_at=?
+      WHERE lease_id=? AND scenario_id=? AND state='preparing'`)
+      .bind(value.runId,new Date().toISOString(),binding.leaseId,scenario),
+    ]);
+    return value;
+  }
+
+  async forward(binding:SharedTestReviewBinding) {
+    const fixture=await this.live(binding);
+    const current=await this.env.DB.prepare("SELECT scenario_id,prepared_at FROM test_review_scenarios WHERE lease_id=? AND state='ready'")
+      .bind(binding.leaseId).first<{scenario_id:string;prepared_at:string}>();
+    if(!current)return;
+    if(await this.env.DB.prepare(`SELECT 1 FROM test_review_fault_injections WHERE lease_id=?
+      AND scenario_id=? AND kind='hold_linear_delivery' AND state='armed'`)
+      .bind(binding.leaseId,current.scenario_id).first())return;
+    const events=(await this.env.DB.prepare(`SELECT e.* FROM test_review_fixture_events e
+      JOIN deliveries d ON d.delivery_id=e.delivery_id AND d.payload_hash=e.payload_sha
+      WHERE e.resource_id=? AND e.issue_id=? AND e.received_at>=? AND NOT EXISTS (
+        SELECT 1 FROM test_review_forwarded_events f WHERE f.lease_id=? AND f.scenario_id=? AND f.delivery_id=e.delivery_id)
+      ORDER BY e.received_at,e.delivery_id LIMIT 20`)
+      .bind(fixture.resourceId,fixture.issueId,current.prepared_at,binding.leaseId,current.scenario_id)
+      .all<{delivery_id:string;issue_id:string;actor_id:string;actor_type:string|null;from_state_id:string|null;
+        to_state_id:string;provider_time:string;payload_sha:string;received_at:string}>()).results;
+    for(const e of events) {
+      await this.control(binding,'delivery',{scenario:current.scenario_id,event:{deliveryId:e.delivery_id,
+        issueId:e.issue_id,actorId:e.actor_id,actorType:e.actor_type,fromStateId:e.from_state_id,
+        toStateId:e.to_state_id,providerTime:e.provider_time,payloadDigest:e.payload_sha,receivedAt:e.received_at}});
+      await this.env.DB.prepare(`INSERT OR IGNORE INTO test_review_forwarded_events VALUES (?,?,?,?)`)
+        .bind(binding.leaseId,current.scenario_id,e.delivery_id,new Date().toISOString()).run();
+    }
+  }
+
+  async handle(claims:CapabilityClaims,value:unknown):Promise<Response> {
+    if(!claims.actions.includes('test_review_fixture') || !claims.leaseId || !claims.fence)
+      return Response.json({error:'test_review_fixture_denied'},{status:403});
+    if(!value || typeof value!=='object' || Array.isArray(value))throw new Error('test_review_fixture_input_invalid');
+    const input=value as Record<string,unknown>;
+    if(input.version!==1 || Object.keys(input).some(k=>!['version','operation','scenario','path','kind','step','reconciliationRead'].includes(k)))
+      return Response.json({error:'test_review_fixture_input_invalid',
+        allowedFields:['version','operation','scenario','path','kind','step','reconciliationRead'],
+        example:{version:1,operation:'inject',scenario:'s01',kind:'account_identity_mismatch'}},{status:400});
+    const binding={runId:claims.runId,attemptId:claims.attemptId,leaseId:claims.leaseId,fence:claims.fence};
+    if(input.reconciliationRead!==undefined && (input.operation!=='inject' ||
+        input.kind!=='github_drop_reply_response' || input.reconciliationRead!=='rate_limited'))
+      return Response.json({error:'test_review_reconciliation_read_invalid'},{status:400});
+    await this.live(binding);
+    if(input.operation==='bootstrap')return Response.json(await this.control(binding,'bootstrap'));
+    if(input.operation==='prepare' && typeof input.scenario==='string') {
+      const prior=await this.env.DB.prepare('SELECT state FROM test_review_scenarios WHERE lease_id=? AND scenario_id=?')
+        .bind(binding.leaseId,input.scenario).first<{state:string}>();
+      if(prior?.state==='retired')return Response.json({error:'test_review_scenario_already_retired',
+        recovery:'Preserve the earlier evidence. Prepare a new scenario ID with a unique suffix, such as s11-final.'},{status:409});
+      const preparing=await this.env.DB.prepare("SELECT scenario_id FROM test_review_scenarios WHERE lease_id=? AND state='preparing'")
+        .bind(binding.leaseId).first<{scenario_id:string}>();
+      if(preparing && preparing.scenario_id!==input.scenario)return Response.json({
+        error:'test_review_scenario_preparing',scenario:preparing.scenario_id,
+        recovery:'Resume prepare with this exact scenario ID. A failed setup retains its record; do not choose another suffix.'},{status:409});
+      return Response.json(await this.prepare(binding,input.scenario));
+    }
+    if(['seed_thread','advance_head','move_without_review'].includes(String(input.operation))) {
+      if(typeof input.scenario!=='string' || !await this.env.DB.prepare(`SELECT 1 FROM test_review_scenarios
+        WHERE lease_id=? AND scenario_id=? AND state='ready'`).bind(binding.leaseId,input.scenario).first())
+        return Response.json({error:'test_review_scenario_not_current',
+          recovery:'Use the exact scenario ID returned by the latest prepare, including its suffix.'},{status:409});
+      if(input.step!==undefined && input.step!==1 && input.step!==2)throw new Error('test_review_step_invalid');
+      const fixture=await this.live(binding),operationId=`${input.scenario}-${input.operation}-${input.step??1}`;
+      if(input.operation==='seed_thread')return Response.json(await this.provider(binding,{operation:'github.review',operationId,
+        body:{commit_id:fixture.scope.candidateCommit,event:'COMMENT',body:'Scenario input: existing thread for a reply.',
+          comments:[{path:'canary-review.md',line:2,side:'RIGHT',body:`Scenario ${input.scenario}: reply to this starting thread.`}]}}));
+      if(input.operation==='advance_head')return Response.json(await this.provider(binding,{operation:'github.advance_fixture_head',operationId}));
+      return Response.json(await this.provider(binding,{operation:'linear.move',operationId,issueId:fixture.issueId,stateId:fixture.profile.states.work}));
+    }
+    if(['inject','clear_injections','shorten_delivery_deadline'].includes(String(input.operation))) {
+      if(typeof input.scenario!=='string' || !await this.env.DB.prepare(`SELECT 1 FROM test_review_scenarios
+        WHERE lease_id=? AND scenario_id=? AND state='ready'`).bind(binding.leaseId,input.scenario).first())
+        return Response.json({error:'test_review_scenario_not_current',
+          recovery:'Use the exact scenario ID returned by the latest prepare, including its suffix.'},{status:409});
+      if(input.operation==='shorten_delivery_deadline')
+        return Response.json(await this.control(binding,'shorten_delivery_deadline',{scenario:input.scenario}));
+      if(input.operation==='clear_injections') {
+        await this.env.DB.prepare(`UPDATE test_review_reply_read_faults SET state='cleared',used_at=?
+          WHERE state='armed' AND injection_id IN (SELECT injection_id FROM test_review_fault_injections
+            WHERE lease_id=? AND scenario_id=?)`)
+          .bind(new Date().toISOString(),binding.leaseId,input.scenario).run();
+        await this.env.DB.prepare(`UPDATE test_review_fault_injections SET state='cleared',used_at=?
+          WHERE lease_id=? AND scenario_id=? AND state='armed'`)
+          .bind(new Date().toISOString(),binding.leaseId,input.scenario).run();
+        return Response.json({cleared:true});
+      }
+      if(!sharedReviewFaultKinds.includes(input.kind as SharedReviewFaultKind))
+        return Response.json({error:'test_review_injection_invalid',allowedKinds:sharedReviewFaultKinds},{status:400});
+      const armed=await armSharedReviewFault(this.env.DB,binding.leaseId,input.scenario,
+        input.kind as SharedReviewFaultKind,input.reconciliationRead as 'rate_limited'|undefined);
+      return Response.json(armed,{status:'error' in armed?409:200});
+    }
+    if(input.operation==='evidence' && typeof input.scenario==='string') {
+      await this.forward(binding);
+      return Response.json({runtime:await this.control(binding,'evidence',{scenario:input.scenario}),
+        provider:await this.provider(binding,{operation:'events'}),
+        proof:await this.proofStatus(binding),
+        labeledInjections:(await this.env.DB.prepare(`SELECT i.*,r.state AS receipt_read_state,r.request_id AS receipt_read_request_id,
+          r.used_at AS receipt_read_used_at FROM test_review_fault_injections i LEFT JOIN test_review_reply_read_faults r
+          ON r.injection_id=i.injection_id WHERE i.lease_id=? AND i.scenario_id=?`)
+          .bind(binding.leaseId,input.scenario).all()).results});
+    }
+    if(input.operation==='github.read')return Response.json(await this.provider(binding,{operation:'github.read',path:input.path??''}));
+    if(input.operation==='linear.read')return Response.json(await this.provider(binding,{operation:'linear.read'}));
+    throw new Error('test_review_fixture_operation_denied');
+  }
+
+  /** Read publication state without exposing private object keys or granting
+   * the demo agent any control over the trusted sanitizer. */
+  async proofStatus(binding:SharedTestReviewBinding) {
+    await this.live(binding);
+    return (await this.env.DB.prepare(`SELECT proof_id AS proofId,kind,
+      classification,sanitizer_result AS sanitizerResult,
+      CASE WHEN classification='public_safe' AND sanitizer_result='passed'
+        THEN public_url ELSE NULL END AS publicUrl
+      FROM test_proof_items WHERE run_id=? AND lease_id=? AND phase='first'
+      ORDER BY proof_id`).bind(binding.runId,binding.leaseId).all()).results;
+  }
+}

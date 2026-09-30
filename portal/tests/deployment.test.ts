@@ -51,3 +51,35 @@ test("safe version endpoint exposes only deployment metadata and never reads sto
     async () => ({ email: "test@example.com" }));
   assert.equal(post.status, 405);
 });
+
+test("lease Worker version names the pinned staging base", () => {
+  assert.deepEqual(deploymentMetadata({PORTAL_CANONICAL_HOST:'portal-test.apps.deos-test.voxdez.com',
+    PORTAL_SITE:'Test',
+    PORTAL_SOURCE_SHA:'a'.repeat(40),PORTAL_BUILD_INPUT_SHA256:'b'.repeat(64),
+    TEST_BASE_VERSION_ID:'11111111-1111-4111-8111-111111111111',
+    CF_VERSION_METADATA:{id:'22222222-2222-4222-8222-222222222222'}}),{
+    site:'Test',canonicalHost:'portal-test.apps.deos-test.voxdez.com',
+    sourceBranch:'local',sourceSha:'a'.repeat(40),buildInputSha256:'b'.repeat(64),
+    baseVersionId:'11111111-1111-4111-8111-111111111111',
+    versionId:'22222222-2222-4222-8222-222222222222',
+  });
+});
+
+test("lease portal accepts only the trusted edge header and rejects provider bindings", async () => {
+  const env={PORTAL_SITE:"Test",ACCESS_TEAM_DOMAIN:"test",ACCESS_AUD:"test",
+    ALLOWED_EMAIL:"test@example.com",DB:{} as D1Database,
+    ARTIFACTS:{} as R2Bucket,ASSETS:{fetch:async()=>new Response("test page")},
+  } as unknown as Parameters<typeof routePortalRequest>[1];
+  const url="https://portal-test.apps.deos-test.voxdez.com/";
+  const denied=await routePortalRequest(new Request(url),env,
+    async()=>{throw new Error("unauthorized");});
+  assert.equal(denied.status,401);
+  const allowed=await routePortalRequest(new Request(url,{headers:{
+    "X-Deos-Test-Gate":"verified"}}),env,
+  async()=>{throw new Error("must not verify a second time");});
+  assert.equal(allowed.status,200);
+  assert.equal(await allowed.text(),"test page");
+  await assert.rejects(routePortalRequest(new Request(url,{headers:{
+    "X-Deos-Test-Gate":"verified"}}),{...env,ROUTE_ADMIN:{} as Service},
+  async()=>{throw new Error("must not call");}),/provider_binding_forbidden/);
+});

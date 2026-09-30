@@ -3,12 +3,18 @@ name: Build shared test candidate
 on:
   repository_dispatch:
     types: [shared-test-candidate-build]
+  workflow_dispatch:
+    inputs:
+      candidateCommit:
+        description: Exact candidate commit to build and verify in private test storage
+        required: true
+        type: string
 
 permissions:
   contents: read
 
 concurrency:
-  group: shared-test-candidate-${{ github.event.client_payload.candidateCommit }}
+  group: shared-test-candidate-${{ inputs.candidateCommit || github.event.client_payload.candidateCommit }}
   cancel-in-progress: false
   queue: max
 
@@ -29,7 +35,7 @@ jobs:
       - name: Check out exact candidate
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.client_payload.candidateCommit }}
+          ref: ${{ inputs.candidateCommit || github.event.client_payload.candidateCommit }}
           path: candidate
           persist-credentials: false
       - uses: actions/setup-node@v4
@@ -43,13 +49,22 @@ jobs:
         with:
           script: |
             const fs = require('fs');
-            const payload = context.payload.client_payload;
+            const payload = context.payload.inputs || context.payload.client_payload;
             fs.writeFileSync('candidate-request.json', JSON.stringify({
               candidateCommit: payload.candidateCommit,
               service: '${{ matrix.service }}',
             }));
       - name: Build from saved commit without provider credentials
         run: python tools/scripts/build_shared_test_candidate.py --candidate-root candidate --request-file candidate-request.json --output bundle.json --receipt receipt.json
+      - name: Install locked Worker dependencies without provider credentials
+        if: matrix.service == 'bettaview'
+        run: npm ci --prefix candidate
+      - name: Compile BettaView Worker from the same commit
+        if: matrix.service == 'bettaview'
+        run: python tools/scripts/shared_test_worker_module.py build --candidate-root candidate --bundle-receipt receipt.json --output compiled-worker.js --receipt compiled-receipt.json
+      - name: Compile the candidate review service and Workflow
+        if: matrix.service == 'bettaview' && hashFiles('candidate/src/review-continuation-entrypoint.ts') != ''
+        run: python tools/scripts/shared_test_review_runtime.py build --candidate-root candidate --bundle-receipt receipt.json --output review-runtime.js --receipt review-runtime-receipt.json
       - name: Keep checked bundle for isolated uploader
         uses: actions/upload-artifact@v4
         with:
@@ -57,6 +72,10 @@ jobs:
           path: |
             bundle.json
             receipt.json
+            compiled-worker.js
+            compiled-receipt.json
+            review-runtime.js
+            review-runtime-receipt.json
           if-no-files-found: error
           retention-days: 3
 
@@ -64,6 +83,8 @@ jobs:
     needs: build
     runs-on: avrea-ubuntu-latest-2-vcpu
     environment: staging
+    env:
+      SHARED_TEST_UPLOAD_TRANSPORT: s3
     strategy:
       fail-fast: false
       matrix:
@@ -78,12 +99,25 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Install trusted Wrangler
-        run: npm ci --prefix tools
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install trusted S3 client
+        run: python -m pip install boto3==1.40.0
       - uses: actions/download-artifact@v4
         with:
           name: shared-test-candidate-${{ github.run_id }}-${{ matrix.service }}
       - name: Verify and upload immutable bundle
         env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.PORTAL_STAGING_CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.SHARED_TEST_R2_UPLOAD_TOKEN }}
         run: python tools/scripts/publish_shared_test_candidate.py --bundle bundle.json --receipt receipt.json
+      - name: Verify and upload compiled BettaView Worker
+        if: matrix.service == 'bettaview'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.SHARED_TEST_R2_UPLOAD_TOKEN }}
+        run: python tools/scripts/shared_test_worker_module.py publish --module compiled-worker.js --receipt compiled-receipt.json
+      - name: Verify and upload the candidate review runtime
+        if: matrix.service == 'bettaview' && hashFiles('review-runtime-receipt.json') != ''
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.SHARED_TEST_R2_UPLOAD_TOKEN }}
+        run: python tools/scripts/shared_test_review_runtime.py publish --module review-runtime.js --receipt review-runtime-receipt.json

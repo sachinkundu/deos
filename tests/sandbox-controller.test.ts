@@ -526,6 +526,10 @@ class Sandbox implements SandboxView {
     }
     if (command[0] === "git" && command[1] === "rev-parse") process.stdout = `${this.revision}\n`;
     if (command[0] === "git" && command[1] === "status") process.stdout = this.statusOutput;
+    if (command[0] === 'mv' && command[1] === '--' && this.files.has(command[2])) {
+      this.files.set(command[3],this.files.get(command[2])!);
+      this.files.delete(command[2]);
+    }
     return Promise.resolve(process);
   }
 
@@ -588,13 +592,14 @@ class Collector {
   failureErrorCategory = "supervisor_failed";
   sandbox: Sandbox | null = null;
   receiptIds = ["operation-1"];
+  blocker = "";
   collect(): Promise<ArtifactCollectionResult> {
     return Promise.resolve({
       manifestId: "manifest:attempt-1",
       aggregateDigest: "aggregate",
       objectCount: 2,
       totalBytes: 100,
-      result: { outcome: "completed", providerReceipts: [...this.receiptIds] },
+      result: { outcome: "completed", blocker: this.blocker, providerReceipts: [...this.receiptIds] },
       providerReceipts: this.receiptIds.map((operationId) => ({
         capability: "github",
         operationId,
@@ -806,6 +811,31 @@ test("controller stages fixed paths and starts the argv supervisor without provi
   assert.doesNotMatch(prompt, /Review jobs must publish their review outcome and actionable feedback/);
   assert.match(prompt, /\^\[a-z0-9\]\[a-z0-9\._-\]\{0,79\}\$/);
   assert.match(prompt, /requirements-publish-v1/);
+});
+
+test("a reserved demo attempt cannot be replaced by a second attempt", async () => {
+  const state=setup();
+  const reserved='00000000-0000-7000-8000-000000000099';
+  const started=await state.controller.execute(run,'work','work',definition,reserved);
+  assert.equal(started.attemptId,reserved);
+  assert.equal(state.attempts.latest?.attempt_id,reserved);
+  await assert.rejects(state.controller.execute(run,'work','work',definition,
+    '00000000-0000-7000-8000-000000000088'),/shared_test_demo_attempt_changed/);
+});
+
+test("a destroyed terminal demo attempt permits its trusted replacement ID", async () => {
+  const state=setup();
+  const first='00000000-0000-7000-8000-000000000099';
+  const next='00000000-0000-7000-8000-000000000088';
+  await state.controller.execute(run,'shared_test_demo','work',definition,first);
+  assert.ok(state.attempts.latest);
+  state.attempts.latest.state='blocked';
+  state.attempts.latest.cleanup_state='destroyed';
+  state.attempts.latest.ended_at=NOW.toISOString();
+  const restarted=await state.controller.execute(run,'shared_test_demo','work',
+    definition,next);
+  assert.equal(restarted.attemptId,next);
+  assert.equal(state.attempts.latest?.attempt_id,next);
 });
 
 for (const input of [null, 'implementation_context', 'implementation_demo_context']) test(input
@@ -1101,6 +1131,22 @@ test("transient repository checkout failure becomes terminal after bounded retri
   assert.equal(state.attempts.latest?.state, "failed");
   assert.equal(state.attempts.latest?.result_class, "startup_failed");
   assert.equal(state.factory.sandbox.destroyed, true);
+  assert.equal(state.credentials.released, 1);
+});
+
+test("checkout failure keeps original output and exit details while redacting the grant", async () => {
+  const state = setup();
+  state.factory.sandbox.cloneFailureStderr.push("remote: Repository not found. grant-token");
+  await assert.rejects(state.controller.execute(run, "work", "work", definition), (error: unknown) => {
+    const failure = error as Error & {cause: {attemptNumber:number;output:{stderr:string};exit:{code:number}}};
+    assert.equal(failure.message, "repository_checkout_missing");
+    assert.equal(failure.cause.attemptNumber, 1);
+    assert.equal(failure.cause.exit.code, 128);
+    assert.equal(failure.cause.output.stderr, "remote: Repository not found. [redacted]");
+    assert.ok(!JSON.stringify(failure.cause).includes("grant-token"));
+    return true;
+  });
+  assert.equal(state.credentials.released, 1);
 });
 
 test("permanent repository checkout failures do not retry", async () => {
@@ -1475,6 +1521,36 @@ test("running process reconciles the exact process and fresh supervisor heartbea
   assert.equal(attempts.latest?.heartbeat_at, NOW.toISOString());
 });
 
+test('a model delay cannot expire the active shared-test capability',async()=>{
+  let time=new Date(NOW);
+  const state=setup({clock:()=>time,checkoutCommit:'a'.repeat(40)});
+  const shared={...definition,jobs:{...definition.jobs,
+    work:{...definition.jobs.work,inputs:['shared_test_context']}}};
+  await state.controller.execute(run,'work','work',shared);
+  const attemptId=state.attempts.latest!.attempt_id;
+  const poll=async(minutes:number)=>{
+    time=new Date(NOW.getTime()+minutes*60_000);
+    state.factory.sandbox.files.set('/deos/output/heartbeat.json',JSON.stringify({
+      attemptId,observedAt:time.toISOString(),
+    }));
+    assert.equal((await state.controller.execute(run,'work','work',shared)).state,'running');
+  };
+  await poll(1);
+  assert.equal(state.grantCalls.length,2);
+  await poll(2);
+  assert.equal(state.grantCalls.length,2);
+  // Even after the old 15-minute grant expired, only the trusted controller
+  // can request a new grant after rechecking the exact live lease subject.
+  await poll(25);
+  assert.equal(state.grantCalls.length,3);
+  assert.deepEqual(state.grantCalls.at(-1)?.slice(0,2),[attemptId,run.run_id]);
+  const saved=JSON.parse(state.factory.sandbox.files.get('/deos/run/shared-test-capability.json')!);
+  assert.deepEqual(saved,{attempt:attemptId,token:'grant-token',refreshedAt:time.toISOString()});
+  assert.equal(state.attempts.latest!.absolute_deadline,
+    new Date(NOW.getTime()+24*60*60_000).toISOString());
+  assert.equal(state.factory.sandbox.supervisor.killed,false);
+});
+
 test("non-zero supervisor exit persists failure evidence before cleanup", async () => {
   const { controller, factory, attempts, collector } = setup();
   await controller.execute(run, "work", "work", definition);
@@ -1596,6 +1672,30 @@ test("successful completion refreshes auth, removes it, collects, destroys, then
   assert.equal(attempts.latest?.manifest_id, "manifest:attempt-1");
   assert.equal(observation.state === "completed" ? observation.outcome.providerReceiptsComplete : false, true);
 });
+
+for (const blocker of ["Missing second-account setup", "", "   "]) test(
+  `shared-test collection classifies an explicit blocker without rewriting evidence: ${JSON.stringify(blocker)}`,
+  async () => {
+    const {controller,factory,attempts,collector}=setup({checkoutCommit:'a'.repeat(40)});
+    const shared={...definition,jobs:{...definition.jobs,
+      work:{...definition.jobs.work,inputs:['shared_test_context']}}};
+    collector.blocker=blocker;
+    await controller.execute(run,'work','work',shared);
+    factory.sandbox.supervisor.state='exited';
+    factory.sandbox.supervisor.exitCode=0;
+    const observation=await controller.execute(run,'work','work',shared);
+    const expected=blocker.trim()?'blocked':'completed';
+    assert.equal(observation.state,'completed');
+    assert.equal(observation.state==='completed'?observation.outcome.outcome:null,expected);
+    assert.equal(attempts.latest?.state,expected);
+    assert.equal(attempts.latest?.result_class,expected);
+    assert.equal(attempts.latest?.manifest_id,'manifest:attempt-1');
+    assert.equal(collector.verifiedDurable,1);
+    assert.equal(collector.verified,1);
+    assert.equal((await collector.collect()).result.outcome,'completed','original report remains unchanged');
+    assert.equal((await collector.collect()).result.blocker,blocker);
+    if(blocker.trim())assert.match(attempts.latest?.result_detail??'',/unresolved blocker/);
+  });
 
 test("successful agent output without durable provider receipts fails closed", async () => {
   const { controller, factory, collector } = setup();

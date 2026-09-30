@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { implementationPolicy } from "../src/implementation-contract.ts";
-import { configureImplementationNetwork } from "../src/implementation-network.ts";
+import { configureImplementationNetwork,configureSharedTestNetwork } from "../src/implementation-network.ts";
 
 test("model, saved package hosts and broker pass the outer filter only after policy installation", async () => {
   let configured = false;
@@ -25,6 +25,17 @@ test("model, saved package hosts and broker pass the outer filter only after pol
   assert.ok(!hosts.includes("*"));
   assert.ok(!hosts.includes("api.trycloudflare.com"), "tunnels run only in the trusted preview relay");
   assert.ok(!hosts.includes("pypi.org"), "use the frozen package policy");
+});
+
+test('shared test agent can reach only its broker and model sign-in hosts',async()=>{
+  let configured=false;
+  await configureSharedTestNetwork({
+    async setOutboundHandler(name){assert.equal(name,'implementation');configured=true;},
+    async setAllowedHosts(hosts){
+      assert.equal(configured,true);
+      assert.deepEqual(hosts,['chatgpt.com','auth.openai.com','broker.example']);
+    },
+  },'https://broker.example/capabilities',{runId:'run',attemptId:'attempt'});
 });
 
 test("a failed handler installation leaves outbound hosts closed and preserves the error", async () => {

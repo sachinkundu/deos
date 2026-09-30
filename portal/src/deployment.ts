@@ -4,18 +4,21 @@ export interface PortalDeploymentEnv {
   PORTAL_SOURCE_BRANCH?: string;
   PORTAL_SOURCE_SHA?: string;
   PORTAL_BUILD_INPUT_SHA256?: string;
+  TEST_BASE_VERSION_ID?: string;
   CF_VERSION_METADATA?: { id: string };
 }
 
 export function deploymentMetadata(env: PortalDeploymentEnv) {
   return {
-    site: env.PORTAL_SITE === "Staging" || env.PORTAL_SITE === "Production"
+    site: env.PORTAL_SITE === "Staging" || env.PORTAL_SITE === "Production" ||
+      env.PORTAL_SITE === "Test"
       ? env.PORTAL_SITE : "Development",
     canonicalHost: env.PORTAL_CANONICAL_HOST ?? "localhost",
     sourceBranch: env.PORTAL_SOURCE_BRANCH ?? "local",
     sourceSha: env.PORTAL_SOURCE_SHA ?? "unbuilt",
     buildInputSha256: env.PORTAL_BUILD_INPUT_SHA256 ?? null,
     versionId: env.CF_VERSION_METADATA?.id ?? null,
+    ...(env.TEST_BASE_VERSION_ID ? {baseVersionId:env.TEST_BASE_VERSION_ID} : {}),
   };
 }
 

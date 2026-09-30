@@ -28,11 +28,19 @@ def main() -> None:
     if (site["state"] != "free" or site["owner_run_id"] is not None or
             site["owner_lease_id"] is not None):
         raise ValueError("Shared test site is not free for staging bootstrap")
-    if rows["pointer"][0]["state"] not in ("uninitialized", "updating"):
+    if rows["pointer"][0]["state"] not in ("uninitialized", "updating", "stable"):
         raise ValueError("Staging pointer is not ready for bootstrap")
+    services = client.query("""SELECT service_name,source_commit,deploy_version,
+        build_input_sha256 FROM staging_release_services
+        WHERE manifest_id=? ORDER BY service_name""",
+        (rows["pointer"][0]["manifest_id"],))["results"] if rows["pointer"][0]["state"] == "stable" else []
+    if rows["pointer"][0]["state"] == "stable" and [
+        row["service_name"] for row in services
+    ] != ["bettaview", "portal"]:
+        raise ValueError("Stable staging pointer has an incomplete service set")
     print(json.dumps({name: value[0] for name, value in rows.items()
                       if name != "activeAttempts"} |
-                     {"activeAttempts": []}, sort_keys=True))
+                     {"activeAttempts": [], "stagingServices": services}, sort_keys=True))
 
 
 if __name__ == "__main__":

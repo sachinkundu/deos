@@ -22,6 +22,7 @@
     "jose": "6.1.0",
     "react": "19.1.1",
     "react-dom": "19.1.1",
+    "sharp": "0.35.2",
     "yaml": "2.9.0"
   },
   "devDependencies": {

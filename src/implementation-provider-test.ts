@@ -13,6 +13,8 @@ export interface ReviewTestProfileRow {
   run_id: string; adapter_binding: string; profile_json: string; profile_sha: string;
 }
 interface Fixture {
+  reviewPath?:string;
+  unlinkedPull?:{branch:string;head:string;pullNumber:number|null;pullUrl:string|null};
   profile: ReviewTestProfile; branch: string; head: string; heads: string[];
   pullNumber: number; pullUrl: string; issueId: string; issueUrl: string;
 }
@@ -31,15 +33,48 @@ const note = (value: unknown): string => {
 export class ImplementationProviderTest {
   readonly store: ImplementationStore;
   readonly env: TestEnv;
-  constructor(env: TestEnv) { this.env = env; this.store = new ImplementationStore(env.DB, env.ARTIFACTS); }
+  readonly assertScope?:()=>Promise<void>;
+  readonly leaseId?:string;
+  constructor(env: TestEnv,assertScope?:()=>Promise<void>,leaseId?:string) {
+    this.assertScope=assertScope;
+    if(leaseId && (!/^[a-f0-9]{64}$/.test(leaseId) || !assertScope))
+      throw new Error('provider_test_lease_scope_invalid');
+    this.leaseId=leaseId;
+    this.env = env; this.store = new ImplementationStore(env.DB, env.ARTIFACTS);
+  }
+  private prepare(sql:string):D1PreparedStatement {
+    // These are fixed internal table names, never request-supplied identifiers.
+    return this.env.DB.prepare(this.leaseId?sql
+      .replaceAll('implementation_resources','test_review_fixtures')
+      .replaceAll('implementation_test_operations','test_review_fixture_operations')
+      .replaceAll('implementation_test_events','test_review_fixture_events'):sql);
+  }
+  private async resource(attemptId:string):Promise<ImplementationResource|null> {
+    if(!this.leaseId)return this.store.resource(attemptId,'safe_test');
+    return this.prepare(`SELECT * FROM implementation_resources WHERE attempt_id=? AND lease_id=?`)
+      .bind(attemptId,this.leaseId).first<ImplementationResource>();
+  }
+  private async allocate(runId:string,attemptId:string):Promise<ImplementationResource> {
+    if(!this.leaseId)return this.store.allocateResource(runId,attemptId,'safe_test',REVIEW_TEST_ADAPTER);
+    await this.assertScope!();
+    const id=`${attemptId}:safe_test`,now=new Date().toISOString();
+    await this.prepare(`INSERT OR IGNORE INTO implementation_resources
+      (resource_id,run_id,attempt_id,lease_id,kind,slot_id,allocation_op,provider,status,created_at,updated_at)
+      VALUES (?,?,?,?,'safe_test',?,?,'github-linear-review-v1','allocating',?,?)`)
+      .bind(id,runId,attemptId,this.leaseId,id,`${id}:allocate`,now,now).run();
+    const row=await this.resource(attemptId);
+    if(!row || row.run_id!==runId)throw new Error('provider_test_resource_identity_changed');
+    return row;
+  }
   async profile(runId: string) {
-    const row = await this.env.DB.prepare("SELECT * FROM implementation_test_profiles WHERE run_id=?")
+    const row = await this.prepare("SELECT * FROM implementation_test_profiles WHERE run_id=?")
       .bind(runId).first<ReviewTestProfileRow>();
     if (!row || await sha256Hex(row.profile_json) !== row.profile_sha ||
       row.adapter_binding !== `${REVIEW_TEST_ADAPTER}@${row.profile_sha}`) throw new Error("provider_test_profile_missing_or_changed");
     return { row, profile: JSON.parse(row.profile_json) as ReviewTestProfile };
   }
   async graphql(query: string, variables: Record<string, unknown>): Promise<Record<string, unknown>> {
+    await this.assertScope?.();
     const response = await fetch(this.env.LINEAR_API_URL, { method: "POST", redirect: "manual",
       headers: { Authorization: this.env.LINEAR_APP_ACCESS_TOKEN, "Content-Type": "application/json" },
       body: JSON.stringify({ query, variables }) });
@@ -51,10 +86,17 @@ export class ImplementationProviderTest {
   private async github(runId: string, profile: ReviewTestProfile, reviewer = false) {
     const run = await new D1OrchestrationStore(this.env.DB).findRun(runId);
     if (!run) throw new Error("provider_test_run_missing");
-    if (!reviewer) return implementationGitHub(this.env, { ...run, route_repository: profile.repository });
+    const request:typeof fetch=async(input,init)=>{
+      await this.assertScope?.();
+      return fetch(input,init);
+    };
+    if (!reviewer) {
+      const app=implementationGitHub(this.env, { ...run, route_repository: profile.repository });
+      return new ImplementationGitHub(app.apiUrl,app.repository,app.tokens,request);
+    }
     const token = this.env.IMPLEMENTATION_TEST_GITHUB_TOKEN;
     if (!token) throw new Error("provider_test_github_reviewer_not_connected");
-    return new ImplementationGitHub(this.env.GITHUB_API_URL, profile.repository, { token: async () => token });
+    return new ImplementationGitHub(this.env.GITHUB_API_URL, profile.repository, { token: async () => token },request);
   }
   async checkedReviewer(): Promise<{ id: number; login: string }> {
     const token = this.env.IMPLEMENTATION_TEST_GITHUB_TOKEN;
@@ -88,35 +130,42 @@ export class ImplementationProviderTest {
         throw new Error(`provider_test_state_changed:${key}`);
     const profileJson = JSON.stringify(input), digest = await sha256Hex(profileJson);
     const adapter = `${REVIEW_TEST_ADAPTER}@${digest}`;
-    await this.env.DB.prepare(`INSERT OR IGNORE INTO implementation_test_profiles
+    await this.prepare(`INSERT OR IGNORE INTO implementation_test_profiles
       (run_id,adapter_binding,profile_json,profile_sha,checked_at,checked_by) VALUES (?,?,?,?,?,?)`)
       .bind(runId, adapter, profileJson, digest, new Date().toISOString(), requestedBy).run();
     const saved = await this.profile(runId);
     if (saved.row.profile_sha !== digest) throw new Error("provider_test_profile_is_frozen");
     return saved.row;
   }
-  private async save(resource: ImplementationResource, fixture: Partial<Fixture>) {
-    await this.env.DB.prepare("UPDATE implementation_resources SET metadata_json=?,updated_at=? WHERE resource_id=? AND status='allocating'")
-      .bind(JSON.stringify(fixture), new Date().toISOString(), resource.resource_id).run();
+  private async save(resource: ImplementationResource, fixture: Partial<Fixture>, ready=false) {
+    if(ready && !this.leaseId)throw new Error('provider_test_ready_update_requires_lease');
+    await this.assertScope?.();
+    const changed=await this.prepare("UPDATE implementation_resources SET metadata_json=?,updated_at=? WHERE resource_id=? AND run_id=? AND attempt_id=? AND status=?")
+      .bind(JSON.stringify(fixture), new Date().toISOString(), resource.resource_id,
+        resource.run_id,resource.attempt_id,ready?'ready':'allocating').run();
+    if(changed.meta.changes!==1)throw new Error('provider_test_fixture_update_fenced');
   }
-  async fixture(runId: string, attemptId: string, allowedAdapters: readonly string[]) {
-    const { row, profile } = await this.profile(runId);
+  async fixture(runId: string, attemptId: string, allowedAdapters: readonly string[],
+    profileRunId=runId) {
+    await this.assertScope?.();
+    const { row, profile } = await this.profile(profileRunId);
     if (!allowedAdapters.includes(row.adapter_binding)) throw new Error("provider_test_adapter_not_frozen");
-    const resource = await this.store.allocateResource(runId, attemptId, "safe_test", REVIEW_TEST_ADAPTER);
+    const resource = await this.allocate(runId, attemptId);
     if (resource.status === "ready") return { resource, fixture: JSON.parse(resource.metadata_json) as Fixture };
     if (resource.status !== "allocating") throw new Error("provider_test_allocation_quarantined");
     const operation = `${resource.resource_id}:allocate`;
-    const reserved = await this.env.DB.prepare(`INSERT OR IGNORE INTO implementation_test_operations
+    const reserved = await this.prepare(`INSERT OR IGNORE INTO implementation_test_operations
       (operation_id,resource_id,request_sha,request_json,state,started_at) VALUES (?,?,?,?,'started',?)`)
       .bind(operation, resource.resource_id, row.profile_sha, row.profile_json, new Date().toISOString()).run();
     if (reserved.meta.changes !== 1) throw new Error("provider_test_allocation_pending_readback");
-    const fixture: Partial<Fixture> = { profile, branch: `deos/canary/${attemptId}`, issueId: crypto.randomUUID() };
+    const fixture: Partial<Fixture> = { profile, branch: `deos/canary/${attemptId}`, issueId: crypto.randomUUID(),
+      reviewPath:this.leaseId?'canary-review.md':'canary-review.txt' };
     await this.save(resource, fixture);
     try {
       const app = await this.github(runId, profile), base = await app.ref("main");
       const parent = await app.json<{ tree: { sha: string } }>(`/git/commits/${base}`);
       const tree = await app.json<{ sha: string }>("/git/trees", jsonInit({ base_tree: parent.tree.sha,
-        tree: [{ path: "canary-review.txt", mode: "100644", type: "blob", content: "Review canary\nA test note goes here.\n" }] }));
+        tree: [{ path: fixture.reviewPath, mode: "100644", type: "blob", content: "# Review canary\nA test note goes here.\n" }] }));
       const commit = await app.json<{ sha: string }>("/git/commits", jsonInit({ message: "Prepare isolated review test", tree: tree.sha, parents: [base] }));
       fixture.head = commit.sha; fixture.heads = [commit.sha]; await this.save(resource, fixture);
       await app.json("/git/refs", jsonInit({ ref: `refs/heads/${fixture.branch}`, sha: commit.sha }));
@@ -125,6 +174,17 @@ export class ImplementationProviderTest {
         base: "main", body: "Isolated review test for the SAC-182 implementation canary. This pull request is never merged." }));
       if (pull.head.sha !== commit.sha || pull.base.repo.full_name !== profile.repository) throw new Error("provider_test_pull_readback_failed");
       fixture.pullNumber = pull.number; fixture.pullUrl = pull.html_url; await this.save(resource, fixture);
+      if(this.leaseId) {
+        fixture.unlinkedPull={branch:`${fixture.branch}-unlinked`,head:commit.sha,pullNumber:null,pullUrl:null};
+        await this.save(resource,fixture);
+        await app.json('/git/refs',jsonInit({ref:`refs/heads/${fixture.unlinkedPull.branch}`,sha:commit.sha}));
+        const unlinked=await app.json<ImplementationPull>('/pulls',jsonInit({title:'Canary: review without a linked task',
+          head:fixture.unlinkedPull.branch,base:'main',body:'Disposable read-only review fixture. No workflow is linked and this pull request is never merged.'}));
+        if(unlinked.head.sha!==commit.sha || unlinked.head.ref!==fixture.unlinkedPull.branch ||
+            unlinked.base.repo.full_name!==profile.repository)throw new Error('provider_test_unlinked_pull_changed');
+        fixture.unlinkedPull.pullNumber=unlinked.number;fixture.unlinkedPull.pullUrl=unlinked.html_url;
+        await this.save(resource,fixture);
+      }
       const created = await this.graphql(`mutation CreateReviewTest($input: IssueCreateInput!) {
         issueCreate(input:$input) { success issue { id url state { id } } }
       }`, { input: { id: fixture.issueId, teamId: profile.teamId, projectId: profile.projectId, stateId: profile.states.review,
@@ -133,30 +193,35 @@ export class ImplementationProviderTest {
       if (!issue?.success || issue.issue?.id !== fixture.issueId || issue.issue.state.id !== profile.states.review)
         throw new Error("provider_test_issue_readback_failed");
       fixture.issueUrl = issue.issue.url; await this.save(resource, fixture);
-      await this.env.DB.prepare(`UPDATE implementation_resources SET status='ready',provider_resource_id=?,namespace=?,updated_at=?
+      await this.prepare(`UPDATE implementation_resources SET status='ready',provider_resource_id=?,namespace=?,updated_at=?
         WHERE resource_id=? AND status='allocating'`).bind(fixture.issueId, `${profile.repository}:${pull.number}`,
           new Date().toISOString(), resource.resource_id).run();
-      await this.env.DB.prepare("UPDATE implementation_test_operations SET state='completed',response_json=?,completed_at=? WHERE operation_id=?")
+      await this.prepare("UPDATE implementation_test_operations SET state='completed',response_json=?,completed_at=? WHERE operation_id=?")
         .bind(JSON.stringify(fixture), new Date().toISOString(), operation).run();
-      const ready = await this.store.resource(attemptId, "safe_test");
+      const ready = await this.resource(attemptId);
       if (!ready || ready.status !== "ready") throw new Error("provider_test_resource_readback_failed");
       return { resource: ready, fixture: fixture as Fixture };
     } catch (error) {
       try {
-        await this.env.DB.prepare("UPDATE implementation_resources SET status='quarantined' WHERE resource_id=?")
+        await this.prepare("UPDATE implementation_resources SET status='quarantined' WHERE resource_id=?")
           .bind(resource.resource_id).run();
       } catch (secondary) { throw new AggregateError([error, secondary], "Provider test allocation and quarantine failed", { cause: error }); }
       throw error;
     }
   }
 
-  async call(runId: string, attemptId: string, allowedAdapters: readonly string[], value: Record<string, unknown>) {
+  async call(runId: string, attemptId: string, allowedAdapters: readonly string[], value: Record<string, unknown>,
+    profileRunId=runId) {
     if (value.operation !== "fixture") {
-      const allocated = await this.store.resource(attemptId, "safe_test");
+      const allocated = await this.resource(attemptId);
       if (!allocated || allocated.resource_id !== value.resourceId) throw new Error("provider_test_resource_mismatch");
     }
-    const { resource, fixture } = await this.fixture(runId, attemptId, allowedAdapters);
-    await this.store.assertResource(runId, attemptId, resource.resource_id, fixture.issueId);
+    const { resource, fixture } = await this.fixture(runId, attemptId, allowedAdapters,profileRunId);
+    await this.assertScope?.();
+    if(!this.leaseId)await this.store.assertResource(runId, attemptId, resource.resource_id, fixture.issueId);
+    else if(resource.run_id!==runId || resource.attempt_id!==attemptId ||
+        resource.provider_resource_id!==fixture.issueId || resource.status!=='ready')
+      throw new Error('provider_test_resource_identity_changed');
     if (value.operation === "fixture") return { resourceId: resource.resource_id, ...fixture };
     if (value.resourceId !== resource.resource_id) throw new Error("provider_test_resource_mismatch");
     if (value.operation === "events") return this.events(resource, fixture);
@@ -169,10 +234,10 @@ export class ImplementationProviderTest {
       return { response: await github.json(`/pulls/${fixture.pullNumber}${suffix}`) };
     }
     if (value.operation === "linear.read") return { response: await this.readIssue(fixture) };
-    if (!["github.review", "github.reply", "linear.move"].includes(String(value.operation))) throw new Error("provider_test_operation_denied");
+    if (!["github.review", "github.reply", "linear.move",...(this.leaseId?["github.advance_fixture_head"]:[])].includes(String(value.operation))) throw new Error("provider_test_operation_denied");
     if (typeof value.operationId !== "string" || !/^[a-zA-Z0-9_-]{1,120}$/.test(value.operationId)) throw new Error("provider_test_operation_id_missing");
     const operationId = `${resource.resource_id}:${value.operationId}`, encoded = JSON.stringify(value), digest = await sha256Hex(encoded);
-    const before = await this.env.DB.prepare("SELECT * FROM implementation_test_operations WHERE operation_id=?")
+    const before = await this.prepare("SELECT * FROM implementation_test_operations WHERE operation_id=?")
       .bind(operationId).first<{ request_sha: string; state: string; response_json: string | null }>();
     if (before) {
       if (before.request_sha !== digest) throw new Error("provider_test_operation_identity_mismatch");
@@ -180,18 +245,32 @@ export class ImplementationProviderTest {
       return { response: JSON.parse(before.response_json!) };
     }
     const now = new Date().toISOString();
-    const reserve = await this.env.DB.prepare(`INSERT OR IGNORE INTO implementation_test_operations
+    const reserve = await this.prepare(`INSERT OR IGNORE INTO implementation_test_operations
       (operation_id,resource_id,request_sha,request_json,state,started_at) VALUES (?,?,?,?,'started',?)`)
       .bind(operationId, resource.resource_id, digest, encoded, now).run();
     if (reserve.meta.changes !== 1) throw new Error("provider_test_operation_pending");
     try {
       let response: unknown;
-      if (value.operation === "linear.move") {
+      if(value.operation==='github.advance_fixture_head') {
+        const app=await this.github(runId,fixture.profile);
+        if(await app.ref(fixture.branch)!==fixture.head)throw new Error('provider_test_head_changed_outside_fixture');
+        const parent=await app.json<{tree:{sha:string}}>(`/git/commits/${fixture.head}`);
+        const tree=await app.json<{sha:string}>('/git/trees',jsonInit({base_tree:parent.tree.sha,
+          tree:[{path:fixture.reviewPath??'canary-review.txt',mode:'100644',type:'blob',
+            content:`# Review canary\nA test note goes here.\n\nFixture head change ${fixture.heads.length}.\n`}]}));
+        const next=await app.json<{sha:string}>('/git/commits',jsonInit({message:'Advance disposable review scenario',tree:tree.sha,parents:[fixture.head]}));
+        fixture.heads.push(next.sha);await this.save(resource,fixture,true);
+        await this.assertScope?.();
+        await app.json(`/git/refs/heads/${fixture.branch}`,{method:'PATCH',body:JSON.stringify({sha:next.sha,force:false})});
+        if(await app.ref(fixture.branch)!==next.sha)throw new Error('provider_test_advanced_head_readback_failed');
+        const previousHead=fixture.head;fixture.head=next.sha;await this.save(resource,fixture,true);
+        response={previousHead,head:next.sha,fixtureInput:true};
+      } else if (value.operation === "linear.move") {
         if (value.issueId !== fixture.issueId || !Object.values(fixture.profile.states).includes(String(value.stateId)))
           throw new Error("provider_test_linear_target_denied");
         const prior = await this.readIssue(fixture) as { issue: { id: string; state: { id: string } } };
         if (prior.issue?.id !== fixture.issueId) throw new Error("provider_test_issue_changed");
-        await this.env.DB.prepare("UPDATE implementation_test_operations SET prior_state_id=? WHERE operation_id=? AND state='started'")
+        await this.prepare("UPDATE implementation_test_operations SET prior_state_id=? WHERE operation_id=? AND state='started'")
           .bind(prior.issue.state.id, operationId).run();
         response = await this.graphql(`mutation MoveReviewTest($id: String!, $state: String!) {
           issueUpdate(id:$id,input:{stateId:$state}) { success issue { id state { id name } } }
@@ -210,7 +289,7 @@ export class ImplementationProviderTest {
           if (body.comments !== undefined) {
             if (!Array.isArray(body.comments) || body.comments.length > 20) throw new Error("provider_test_comments_denied");
             for (const c of body.comments.map(object)) {
-              if (c.path !== "canary-review.txt" || Object.keys(c).some(k => !["path", "body", "line", "side", "start_line", "start_side"].includes(k)))
+              if (c.path !== (fixture.reviewPath??'canary-review.txt') || Object.keys(c).some(k => !["path", "body", "line", "side", "start_line", "start_side"].includes(k)))
                 throw new Error("provider_test_comment_target_denied");
               note(c.body);
             }
@@ -227,12 +306,12 @@ export class ImplementationProviderTest {
           response = await github.json(`/pulls/${fixture.pullNumber}/comments/${value.commentId}/replies`, jsonInit({ body: note(value.body) }));
         }
       }
-      await this.env.DB.prepare("UPDATE implementation_test_operations SET state='completed',response_json=?,completed_at=? WHERE operation_id=? AND state='started'")
+      await this.prepare("UPDATE implementation_test_operations SET state='completed',response_json=?,completed_at=? WHERE operation_id=? AND state='started'")
         .bind(JSON.stringify(response), new Date().toISOString(), operationId).run();
       return { response };
     } catch (error) {
       try {
-        await this.env.DB.prepare("UPDATE implementation_test_operations SET state='uncertain' WHERE operation_id=? AND state='started'")
+        await this.prepare("UPDATE implementation_test_operations SET state='uncertain' WHERE operation_id=? AND state='started'")
           .bind(operationId).run();
       } catch (secondary) { throw new AggregateError([error, secondary], "Provider test and operation recording failed", { cause: error }); }
       throw error;
@@ -244,16 +323,24 @@ export class ImplementationProviderTest {
     }`, { id: fixture.issueId });
   }
   private async events(resource: ImplementationResource, fixture: Fixture) {
-    const events = await this.env.DB.prepare(`SELECT * FROM implementation_test_events WHERE resource_id=? AND issue_id=? ORDER BY received_at`)
-      .bind(resource.resource_id, fixture.issueId).all();
-    const operations = await this.env.DB.prepare("SELECT operation_id,request_json,response_json,started_at,completed_at FROM implementation_test_operations WHERE resource_id=? AND state='completed' ORDER BY started_at")
+    // Ingress saves deliveries only after raw-body signature verification.
+    // Bind that receipt to this event's exact payload, never its ID alone.
+    const events = await this.prepare(`SELECT e.*,
+      CASE WHEN d.delivery_id IS NOT NULL THEN 1 ELSE 0 END AS signature_verified,
+      CASE WHEN e.actor_id=? THEN 1 ELSE 0 END AS app_actor_matches,
+      d.received_at AS ingress_received_at
+      FROM implementation_test_events e LEFT JOIN deliveries d
+        ON d.delivery_id=e.delivery_id AND d.payload_hash=e.payload_sha
+      WHERE e.resource_id=? AND e.issue_id=? ORDER BY e.received_at`)
+      .bind(this.env.LINEAR_APP_ACTOR_ID,resource.resource_id, fixture.issueId).all();
+    const operations = await this.prepare("SELECT operation_id,request_json,response_json,started_at,completed_at FROM implementation_test_operations WHERE resource_id=? AND state='completed' ORDER BY started_at")
       .bind(resource.resource_id).all();
     return { resourceId: resource.resource_id, fixture, events: events.results, operations: operations.results };
   }
   private async proof(resource: ImplementationResource, fixture: Fixture, request: Record<string, unknown>) {
     const find = async (key: unknown) => {
       if (typeof key !== "string" || !/^[a-zA-Z0-9_-]{1,120}$/.test(key)) throw new Error("provider_test_proof_operation_invalid");
-      const row = await this.env.DB.prepare("SELECT * FROM implementation_test_operations WHERE resource_id=? AND operation_id=? AND state='completed'")
+      const row = await this.prepare("SELECT * FROM implementation_test_operations WHERE resource_id=? AND operation_id=? AND state='completed'")
         .bind(resource.resource_id, `${resource.resource_id}:${key}`)
         .first<{ operation_id: string; request_json: string; response_json: string; started_at: string; prior_state_id: string | null }>();
       if (!row) throw new Error("provider_test_proof_operation_missing");
@@ -271,7 +358,7 @@ export class ImplementationProviderTest {
     if (readback.id !== receipt.id || readback.user.id !== fixture.profile.githubUserId ||
       readback.commit_id !== receipt.commit_id || readback.state !== receipt.state)
       throw new Error("provider_test_proof_review_changed");
-    const event = await this.env.DB.prepare(`SELECT * FROM implementation_test_events
+    const event = await this.prepare(`SELECT * FROM implementation_test_events
       WHERE resource_id=? AND issue_id=? AND actor_id=? AND to_state_id=? AND from_state_id=? AND julianday(received_at)>=julianday(?)
       ORDER BY received_at LIMIT 1`).bind(resource.resource_id, fixture.issueId, this.env.LINEAR_APP_ACTOR_ID,
         linear.request.stateId, linear.prior_state_id, linear.started_at)
@@ -282,15 +369,43 @@ export class ImplementationProviderTest {
       linear: { operationId: linear.operation_id, receipt: linear.response, signedEvent: event } } };
   }
   async cleanup(resource: ImplementationResource) {
-    if (resource.status === "destroyed") return;
+    if (resource.status === "destroyed" && !this.assertScope) return;
     const fixture = JSON.parse(resource.metadata_json) as Partial<Fixture>;
     if (!fixture.profile || !fixture.pullNumber || !fixture.issueId || !fixture.heads)
       throw new Error("provider_test_cleanup_needs_reconciliation");
     const complete = fixture as Fixture, app = await this.github(resource.run_id, complete.profile);
     if (complete.branch !== `deos/canary/${resource.attempt_id}`) throw new Error("provider_test_cleanup_branch_changed");
+    if(complete.unlinkedPull) {
+      const extra=complete.unlinkedPull;
+      if(!extra.pullNumber || extra.branch!==`${complete.branch}-unlinked` || !complete.heads.includes(extra.head))
+        throw new Error('provider_test_unlinked_cleanup_needs_reconciliation');
+      const current=await app.json<ImplementationPull>(`/pulls/${extra.pullNumber}`);
+      if(current.base.repo.full_name!==complete.profile.repository || current.head.ref!==extra.branch ||
+          current.head.sha!==extra.head || current.merged)throw new Error('provider_test_unlinked_cleanup_identity_changed');
+      if(resource.status==='destroyed') {
+        if(current.state!=='closed' || await app.ref(extra.branch,true)!==null)
+          throw new Error('provider_test_unlinked_reappeared_after_cleanup');
+      } else {
+        if(current.state!=='closed')await app.json(`/pulls/${extra.pullNumber}`,{method:'PATCH',body:JSON.stringify({state:'closed'})});
+        const head=await app.ref(extra.branch,true);
+        if(head!==null) {
+          if(head!==extra.head)throw new Error('provider_test_unlinked_cleanup_head_changed');
+          await app.json(`/git/refs/heads/${extra.branch}`,{method:'DELETE'});
+        }
+        if((await app.json<ImplementationPull>(`/pulls/${extra.pullNumber}`)).state!=='closed' ||
+            await app.ref(extra.branch,true)!==null)throw new Error('provider_test_unlinked_cleanup_readback_failed');
+      }
+    }
     const pull = await app.json<ImplementationPull>(`/pulls/${complete.pullNumber}`);
     if (pull.base.repo.full_name !== complete.profile.repository || pull.head.ref !== complete.branch ||
       !complete.heads.includes(pull.head.sha) || pull.merged) throw new Error("provider_test_cleanup_pull_changed");
+    if(resource.status==='destroyed') {
+      const issue=await this.readIssue(complete) as {issue:{id:string;state:{id:string}}};
+      if(pull.state!=='closed' || issue.issue?.id!==complete.issueId ||
+          issue.issue.state.id!==complete.profile.states.canceled || await app.ref(complete.branch,true)!==null)
+        throw new Error('provider_test_resource_reappeared_after_cleanup');
+      return;
+    }
     if (pull.state !== "closed") await app.json(`/pulls/${complete.pullNumber}`, {
       method: "PATCH", body: JSON.stringify({ state: "closed" }),
     });
@@ -309,7 +424,8 @@ export class ImplementationProviderTest {
       await app.json(`/git/refs/heads/${complete.branch}`, { method: "DELETE" });
     }
     if (await app.ref(complete.branch, true) !== null) throw new Error("provider_test_cleanup_ref_still_present");
-    await this.env.DB.prepare("UPDATE implementation_resources SET status='destroyed',cleanup_receipt=?,updated_at=? WHERE resource_id=?")
-      .bind(JSON.stringify({ pullClosed: complete.pullNumber, issueCanceled: complete.issueId }), new Date().toISOString(), resource.resource_id).run();
+    await this.prepare("UPDATE implementation_resources SET status='destroyed',cleanup_receipt=?,updated_at=? WHERE resource_id=?")
+      .bind(JSON.stringify({ pullClosed: complete.pullNumber, issueCanceled: complete.issueId,
+        ...(complete.unlinkedPull?{unlinkedPullClosed:complete.unlinkedPull.pullNumber}:{}) }), new Date().toISOString(), resource.resource_id).run();
   }
 }

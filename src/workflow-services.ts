@@ -1,6 +1,12 @@
-import { configureImplementationNetwork } from "./implementation-network.ts";
+import { configureImplementationNetwork,configureSharedTestNetwork } from "./implementation-network.ts";
 import { BaseChangedError } from "./implementation-contract.ts";
 import { ImplementationService } from "./implementation-service.ts";
+import {sharedTestDemoInput} from './shared-test-demo-input.ts';
+import {retryFailedSharedTestDemo,retryRepairedSharedTestDemo} from './shared-test-demo-retry.ts';
+import {sharedTestCandidateReady} from './shared-test-candidate-ready.ts';
+import {sharedTestCandidateDeployment} from './shared-test-candidate-deployment.ts';
+import {SharedTestMarkerAction} from './shared-test-marker-action.ts';
+import {SharedTestFailureStore} from './shared-test-failures.ts';
 import { ImplementationBroker } from "./implementation-broker.ts";
 import { markImplementationDataDestroyed } from "./implementation-cleanup.ts";
 import { D1BoundedReviewStore } from "./bounded-review-store.ts";
@@ -206,12 +212,27 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
         now: () => new Date(),
         attemptId: defaultAttemptId,
         materializeContext: async (run, job) => {
+          if (job.inputs.includes('shared_test_context')) {
+            const owner=await env.DB.prepare(`SELECT l.attempt_id FROM test_environment e
+              JOIN test_leases l ON l.lease_id=e.owner_lease_id
+              WHERE e.site_id=1 AND e.state='active' AND e.owner_run_id=?
+                AND l.state='active'`).bind(run.run_id)
+              .first<{attempt_id:string}>();
+            if(!owner)throw new Error('shared_test_demo_lease_missing');
+            return sharedTestDemoInput(env,run,owner.attempt_id);
+          }
           if (job.inputs.includes('implementation_demo_context')) return new ImplementationDemoService(env.DB, env.ARTIFACTS)
             .materialize(run, job, await this.implementation.materialize(run, job));
           return job.inputs.includes('implementation_context') ? this.implementation.materialize(run, job) : jobInputs.materialize(run, job);
         },
         acceptDemoReview: input => new ImplementationDemoService(env.DB, env.ARTIFACTS).accept(input),
         implementationNetwork: async (run,attempt,sandbox) => {
+          if(attempt.node_id==='shared_test_demo') {
+            const network=sandbox as unknown as import('./implementation-network.ts').ImplementationNetworkSandbox;
+            await configureSharedTestNetwork(network,env.CAPABILITY_BASE_URL,{
+              runId:run.run_id,attemptId:attempt.attempt_id});
+            return;
+          }
           const saved = await this.implementation.store.requireRun(run.run_id);
           const input = await this.implementation.store.read<import('./implementation-store.ts').ImplementationInput>(saved.input_key, saved.input_sha);
           await configureImplementationNetwork(
@@ -1416,11 +1437,57 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
     }
   }
 
+  collectStoppedSharedTest(run:OrchestrationRunRecord,attemptId:string,definition:LoadedWorkflowDefinition) {
+    return this.agents.execute(run,'shared_test_demo','shared_test_agent',definition,attemptId);
+  }
+
   requestLinearDone(issueId: string) {
     return this.linear.requestDone(issueId);
   }
 
   async executeSystemAction(run: OrchestrationRunRecord, nodeId: string, action: string) {
+    if (action==='implementation.shared_test_demo') {
+      const outcome=await this.implementation.execute(run,action);
+      if(outcome.outcome!=='waiting')return outcome;
+      const owner=await this.env.DB.prepare(`SELECT l.attempt_id,l.lease_id,l.fence,
+        l.run_id,l.candidate_commit,l.patch_sha256,l.base_manifest_id,
+        l.base_traffic_revision,l.base_json
+        FROM test_environment e
+        JOIN test_leases l ON l.lease_id=e.owner_lease_id
+        WHERE e.site_id=1 AND e.state='active' AND e.owner_run_id=?
+          AND e.heartbeat_due_at>? AND l.state='active'`)
+        .bind(run.run_id,new Date().toISOString())
+        .first<{attempt_id:string;lease_id:string;fence:number;run_id:string;
+          candidate_commit:string;patch_sha256:string;base_manifest_id:string;
+          base_traffic_revision:string;base_json:string}>();
+      if(owner && await sharedTestCandidateReady(this.env.DB,owner) &&
+          await sharedTestCandidateDeployment(this.env).verifyReady(owner)) {
+        if(await retryFailedSharedTestDemo(this.env,run.run_id,
+            owner.lease_id,owner.attempt_id,owner.fence))return outcome;
+        if(await retryRepairedSharedTestDemo(this.env,run.run_id,
+            owner.lease_id,owner.attempt_id,owner.fence))return outcome;
+        const definition=this.implementation.definition;
+        if(!definition.jobs.shared_test_agent)
+          throw new Error('shared_test_demo_job_missing');
+        try {
+          await this.agents.execute(run,nodeId,'shared_test_agent',definition,
+            owner.attempt_id);
+        } catch (error) {
+          try {
+            await new SharedTestFailureStore(this.env.DB,this.env.ARTIFACTS).record({
+              runId:run.run_id,leaseId:owner.lease_id,fence:owner.fence,
+              phase:'active',operation:'shared_test.demo_agent',
+              safeCode:'shared_test_demo_agent_failed',
+            },error);
+          } catch (diagnosticError) {
+            throw new AggregateError([error,diagnosticError],
+              'Demo agent and diagnostic storage failed',{cause:error});
+          }
+          throw error;
+        }
+      }
+      return outcome;
+    }
     if (action.startsWith("implementation.")) return this.implementation.execute(run, action);
     if (action === "linear.delegate_and_start") {
       return this.linear.ensureWorkStarted(run, nodeId);
@@ -1950,6 +2017,24 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
     }
     if (run.route_github_installation_id === null || run.route_github_installation_id === undefined) {
       throw new Error("capability GitHub App installation is missing from the frozen run");
+    }
+    if (job.inputs.includes('shared_test_context')) {
+      const markerKey=(this.env as Env & {TEST_MARKER_KEY_V1?:string}).TEST_MARKER_KEY_V1;
+      if(!markerKey)throw new Error('shared_test_marker_key_missing');
+      const lease=await this.env.DB.prepare(`SELECT l.lease_id,l.fence,l.repository,
+        l.task_id FROM test_environment e JOIN test_leases l
+        ON l.lease_id=e.owner_lease_id WHERE e.site_id=1 AND e.state='active'
+          AND e.owner_run_id=? AND l.run_id=? AND l.attempt_id=?
+          AND l.state='active'`).bind(runId,runId,attemptId)
+        .first<{lease_id:string;fence:number;repository:string;task_id:string}>();
+      if(!lease || lease.repository!==repository || lease.task_id!==run.issue_id)
+        throw new Error('shared_test_capability_scope_changed');
+      const token=await new SharedTestMarkerAction(this.env.DB,
+        new LinearCapabilityAdapter(this.env.LINEAR_API_URL,
+          this.env.LINEAR_APP_ACCESS_TOKEN),markerKey).grant({
+        runId,attemptId,leaseId:lease.lease_id,fence:lease.fence,
+        repository,issueId:run.issue_id},this.env.CAPABILITY_SIGNING_SECRET);
+      return {url:this.env.CAPABILITY_BASE_URL.replace(/\/$/,''),token};
     }
     const planning = job.capabilities?.includes("github.publish_planning_work_product") === true;
     const explicitlyBound = job.agentRole !== undefined;

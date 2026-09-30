@@ -1,0 +1,28 @@
+[
+  {
+    "rayId": "a4320df45a641569",
+    "operation": "shared_test.review.inject",
+    "scenario": "s10-r2",
+    "source": {
+      "message": "D1_ERROR: UNIQUE constraint failed: test_review_fault_injections.lease_id, test_review_fault_injections.kind: SQLITE_CONSTRAINT (extended: SQLITE_CONSTRAINT_UNIQUE)",
+      "exception": {
+        "name": "Error",
+        "stack": "    at D1DatabaseSessionAlwaysPrimary._sendOrThrow (cloudflare-internal:d1-api:188:19)\n    at async cloudflare-internal:d1-api:137:19\n    at async SharedTestReviewScenarios.handle (queue-consumer.js:50326:11)\n    at async queue-consumer.js:145:16",
+        "timestamp": 1790759007963
+      }
+    }
+  },
+  {
+    "rayId": "a4320e3b3b471569",
+    "operation": "shared_test.review.inject",
+    "scenario": "s10-r2",
+    "source": {
+      "message": "D1_ERROR: UNIQUE constraint failed: test_review_fault_injections.lease_id, test_review_fault_injections.kind: SQLITE_CONSTRAINT (extended: SQLITE_CONSTRAINT_UNIQUE)",
+      "exception": {
+        "name": "Error",
+        "stack": "    at D1DatabaseSessionAlwaysPrimary._sendOrThrow (cloudflare-internal:d1-api:188:19)\n    at async cloudflare-internal:d1-api:137:19\n    at async SharedTestReviewScenarios.handle (queue-consumer.js:50326:11)\n    at async queue-consumer.js:145:16",
+        "timestamp": 1790759019292
+      }
+    }
+  }
+]

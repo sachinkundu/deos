@@ -53,6 +53,12 @@ interface OpenRouterCapabilityRequest {
 
 export interface CapabilityRouterDependencies {
   implementation?: Pick<import("./implementation-broker.ts").ImplementationBroker, "handle">;
+  sharedTestMarker?: Pick<import('./shared-test-marker-action.ts').SharedTestMarkerAction,'handle'> &
+    Partial<Pick<import('./shared-test-marker-action.ts').SharedTestMarkerAction,'grant'>>;
+  sharedTestBrowser?: Pick<import('./shared-test-browser-action.ts').SharedTestBrowserAction,'handle'>;
+  sharedTestReview?: Pick<import('./shared-test-review-scenarios.ts').SharedTestReviewScenarios,'handle'>;
+  sharedTestLeaseWrite?: (runId:string,attemptId:string,leaseId:string,
+    fence:number)=>Promise<void>;
   completion?: Pick<import("./attempt-completion.ts").AttemptCompletionNotifier, "notify">;
   claude?: Pick<import("./claude-runner.ts").ClaudeRunner, "handle">;
   store: CapabilityStore;
@@ -340,6 +346,17 @@ export class CapabilityRouter {
       context.repository !== claims.repository ||
       context.issueId !== claims.issueId
     ) return json(403, { error: "capability_not_active" });
+    if (claims.leaseId && claims.fence) {
+      if (!this.dependencies.sharedTestLeaseWrite)
+        return json(503,{error:'shared_test_lease_check_unavailable'});
+      try {
+        await this.dependencies.sharedTestLeaseWrite(claims.runId,claims.attemptId,
+          claims.leaseId,claims.fence);
+      } catch (error) {
+        recordCaughtError(error,'src/capability-router.ts:shared_test_lease');
+        return json(403,{error:'shared_test_write_fenced'});
+      }
+    }
 
     if (gitKind !== null) {
       if (
@@ -370,9 +387,45 @@ export class CapabilityRouter {
       recordCaughtError(caughtError, "src/capability-router.ts:360");
       return json(400, { error: "invalid_json" });
     }
+    if (path==='/capabilities/shared-test-renew') {
+      if(!claims.leaseId || !claims.fence ||
+          !claims.actions.includes('test_issue_marker_patch') ||
+          !this.dependencies.sharedTestMarker?.grant)
+        return json(403,{error:'shared_test_renew_denied'});
+      if(!untrusted || typeof untrusted!=='object' || Array.isArray(untrusted) ||
+          Object.keys(untrusted).join(',')!=='version' ||
+          (untrusted as {version:unknown}).version!==1)
+        return json(400,{error:'shared_test_renew_input_invalid'});
+      // The existing grant path checks the attempt deadline and current lease.
+      // No caller can change its task, scope, fence, identity, or permissions.
+      const renewed=await this.dependencies.sharedTestMarker.grant({
+        runId:claims.runId,attemptId:claims.attemptId,leaseId:claims.leaseId,
+        fence:claims.fence,repository:claims.repository,issueId:claims.issueId,
+      },this.dependencies.signingSecret,this.now());
+      return json(200,{token:renewed});
+    }
     if (path.endsWith("/implementation")) {
       if (!this.dependencies.implementation) return json(503, { error: "implementation_unavailable" });
       return this.dependencies.implementation.handle(claims, untrusted);
+    }
+    if (path==='/capabilities/shared-test-marker') {
+      if (!claims.actions.includes('test_issue_marker_patch'))
+        return json(403,{error:'shared_test_marker_denied'});
+      if (!this.dependencies.sharedTestMarker)
+        return json(503,{error:'shared_test_marker_unavailable'});
+      return this.dependencies.sharedTestMarker.handle(claims,untrusted);
+    }
+    if (path==='/capabilities/shared-test-review') {
+      if (!claims.actions.includes('test_review_fixture'))return json(403,{error:'shared_test_review_denied'});
+      if (!this.dependencies.sharedTestReview)return json(503,{error:'shared_test_review_unavailable'});
+      return this.dependencies.sharedTestReview.handle(claims,untrusted);
+    }
+    if (path==='/capabilities/shared-test-browser') {
+      if (!claims.actions.includes('test_app_browser'))
+        return json(403,{error:'shared_test_browser_denied'});
+      if (!this.dependencies.sharedTestBrowser)
+        return json(503,{error:'shared_test_browser_unavailable'});
+      return this.dependencies.sharedTestBrowser.handle(claims,untrusted);
     }
     if (completion) {
       if (progress && !claims.actions.includes("implementation.tools")) return json(403, { error: "progress_denied" });

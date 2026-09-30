@@ -1,9 +1,10 @@
+import {inheritedSharedTestDemoPlan,sharedTestDemoReviewEvidence} from './shared-test-demo-review.ts';
 import { demoHandoff } from './implementation-demo-handoff.ts';
 import { ImplementationError } from './implementation-contract.ts';
 import { ImplementationStore, type ImplementationInput, type ImplementationRun } from './implementation-store.ts';
 import { sha256Hex } from './implementation-hash.ts';
 import { demoRequirements, validateDemoPlan, validateDemoResult,
-  type DemoContext, type DemoCorrection, type DemoCorrectionRequest, type DemoEvidence, type DemoKind, type DemoPlan, type DemoResult, type DemoSource } from './implementation-demo-contract.ts';
+  type DemoReviewRow, type DemoContext, type DemoCorrection, type DemoCorrectionRequest, type DemoEvidence, type DemoKind, type DemoPlan, type DemoResult, type DemoSource } from './implementation-demo-contract.ts';
 import type { AgentAttemptRecord } from './sandbox-controller.ts';
 import type { ArtifactCollectionResult } from './artifact-collector.ts';
 import type { OrchestrationRunRecord } from './orchestration-store.ts';
@@ -12,12 +13,7 @@ import type { WorkflowJob } from './workflow-definition.ts';
 import { ImplementationHostedPreview } from './implementation-hosted-preview.ts';
 import { implementationRuntimeContext } from './implementation-runtime-context.ts';
 
-export interface DemoReviewRow {
-  attempt_id: string; run_id: string; visit_sequence: number; kind: DemoKind;
-  input_sha: string; plan_sha: string | null; candidate_sha: string | null;
-  tested_base_sha: string; tree_sha: string; outcome: string; summary: string;
-  payload_key: string; payload_sha: string; created_at: string;
-}
+export type {DemoReviewRow} from './implementation-demo-contract.ts';
 export const isDemoJob = (job: Pick<WorkflowJob, 'reviewKind'>) =>
   job.reviewKind === 'demo_plan' || job.reviewKind === 'demo_gate';
 
@@ -37,8 +33,11 @@ export class ImplementationDemoService {
   async read<T extends DemoPlan | DemoResult>(row: DemoReviewRow): Promise<T> {
     return this.store.read<T>(row.payload_key, row.payload_sha);
   }
+  async plan(runId:string):Promise<DemoReviewRow|null> {
+    return await this.latest(runId,'plan') ?? await inheritedSharedTestDemoPlan(this.db,runId);
+  }
   async buildInput(runId: string) {
-    const planRow = await this.latest(runId, 'plan');
+    const planRow = await this.plan(runId);
     if (!planRow || planRow.outcome !== 'ready') throw new ImplementationError('demo_plan_missing', 'A ready independent demo plan is required before implementation');
     const gateRow = await this.latest(runId, 'gate');
     return { plan: { sha256: planRow.payload_sha, value: await this.read<DemoPlan>(planRow) },
@@ -48,7 +47,7 @@ export class ImplementationDemoService {
     const work = await this.store.requireRun(run.run_id);
     const input = await this.store.read<ImplementationInput>(work.input_key, work.input_sha);
     const kind: DemoKind = job.reviewKind === 'demo_plan' ? 'plan' : 'gate';
-    const priorRow = await this.latest(run.run_id, 'plan');
+    const priorRow = kind==='gate' ? await this.plan(run.run_id) : await this.latest(run.run_id, 'plan');
     const gateRow = await this.latest(run.run_id, 'gate');
     const priorPlan = priorRow ? await this.read<DemoPlan>(priorRow) : null;
     const sources: DemoSource[] = input.approvedFiles.map(source => ({ ...source, path: `approved/${source.path}` }));
@@ -94,6 +93,8 @@ export class ImplementationDemoService {
     if (candidate) {
       if (!priorRow || priorRow.outcome !== 'ready' || !priorPlan) throw new ImplementationError('demo_plan_missing', 'Demo gate requires its saved ready plan');
       if (candidate.outcome !== 'completed' || candidate.kind !== 'build') throw new ImplementationError('implementation_incomplete', 'Demo gate requires a completed build candidate');
+      const shared=await sharedTestDemoReviewEvidence(this.db,this.bucket,work);
+      sources.push(...shared.sources);evidence.push(...shared.evidence);
       for (const file of candidate.files) {
         if (file.contentBase64 === null) continue;
         const bytes = Uint8Array.from(atob(file.contentBase64), char => char.charCodeAt(0));
